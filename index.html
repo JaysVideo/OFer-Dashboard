@@ -846,39 +846,36 @@ let fallbackFile    = null;
 let colorsLockedFor = null;
 
 async function browseFile() {
-  if (typeof window.showOpenFilePicker === 'function') {
-    try {
-      const [handle] = await window.showOpenFilePicker({
-        types: [{ description: 'XML Files', accept: { 'text/xml': ['.xml'] } }],
-        multiple: false
-      });
-      fileHandle   = handle;
-      fallbackFile = null;
-      colorsLockedFor = null;
-      const file = await handle.getFile();
-      setFileName(file.name);
-      document.getElementById('refreshBtn').style.display = 'inline-block';
-      await readXML();
-      startAutoRefresh();
-    } catch(e) {
-      if (e.name !== 'AbortError') setStat('err', 'COULD NOT OPEN FILE');
-    }
-  } else {
-    document.getElementById('xmlFallbackInput').click();
-  }
+  // Always trigger the native file input — universally reliable on all browsers,
+  // all PCs, all security configs. FSA handle is acquired separately after selection.
+  document.getElementById('xmlFallbackInput').click();
 }
 
 function onFallbackFile(input) {
   if (!input.files || !input.files[0]) return;
-  fallbackFile = input.files[0];
-  colorsLockedFor = null; // reset so new file gets fresh auto-colors
-  // Reset button in case it was showing a stale-file warning
+  fallbackFile    = input.files[0];
+  fileHandle      = null; // clear any old FSA handle
+  colorsLockedFor = null;
   const btn = document.getElementById('fileBtn');
   if (btn) { btn.style.borderColor = ''; btn.style.color = ''; }
   setFileName(fallbackFile.name);
   document.getElementById('refreshBtn').style.display = 'inline-block';
   readXML();
   startAutoRefresh();
+  // Opportunistically try to get an FSA handle for live re-reads
+  // This is silent — if it fails, fallbackFile snapshot is used instead
+  if (typeof window.showOpenFilePicker === 'function') {
+    window.showOpenFilePicker({
+      types: [{ description: 'XML Files', accept: { 'text/xml': ['.xml'] } }],
+      multiple: false,
+      startIn: fallbackFile
+    }).then(([handle]) => {
+      fileHandle = handle;
+      console.log('FSA handle acquired — live re-reads enabled');
+    }).catch(() => {
+      console.log('FSA not available — using snapshot mode');
+    });
+  }
 }
 
 function setFileName(name) {
