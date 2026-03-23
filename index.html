@@ -837,16 +837,36 @@ let countdown = 0;
 let autoTimer  = null;
 let gameLabel  = 'TONIGHT'; // set from XML start time
 
-// ── File handling — universal standard file input, works in all browsers ──────
-let fallbackFile  = null;   // selected XML file
-let colorsLockedFor = null;  // tracks which game colors are locked to
+// ── File handling ────────────────────────────────────────────────────────────
+// Uses File System Access API (showOpenFilePicker) on https:// — persistent
+// handle, reads live from disk every cycle, no stale errors ever.
+// Falls back to <input type="file"> on unsupported browsers.
+let fileHandle      = null;
+let fallbackFile    = null;
+let colorsLockedFor = null;
 
-
-
-// Always use standard file input — works universally across all browsers,
-// security settings, and file:// protocol (showOpenFilePicker is unreliable
-// when opening HTML files directly from disk)
-function browseFile() { /* handled natively by <label for=> */ }
+async function browseFile() {
+  if (typeof window.showOpenFilePicker === 'function') {
+    try {
+      const [handle] = await window.showOpenFilePicker({
+        types: [{ description: 'XML Files', accept: { 'text/xml': ['.xml'] } }],
+        multiple: false
+      });
+      fileHandle   = handle;
+      fallbackFile = null;
+      colorsLockedFor = null;
+      const file = await handle.getFile();
+      setFileName(file.name);
+      document.getElementById('refreshBtn').style.display = 'inline-block';
+      await readXML();
+      startAutoRefresh();
+    } catch(e) {
+      if (e.name !== 'AbortError') setStat('err', 'COULD NOT OPEN FILE');
+    }
+  } else {
+    document.getElementById('xmlFallbackInput').click();
+  }
+}
 
 function onFallbackFile(input) {
   if (!input.files || !input.files[0]) return;
