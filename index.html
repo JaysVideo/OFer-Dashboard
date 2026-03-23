@@ -369,8 +369,8 @@
 <div class="load-bar">
   <span class="load-lbl">XML FILE</span>
   <div class="file-wrap">
-    <button class="file-btn" id="fileBtn" onclick="browseFile()">📂 BROWSE TO LIVE XML...</button>
-    <input type="file" id="xmlFallbackInput" accept=".xml" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;" onchange="onFallbackFile(this)">
+    <label class="file-btn" id="fileBtn" for="xmlFallbackInput">📂 BROWSE TO LIVE XML...</label>
+    <input type="file" id="xmlFallbackInput" accept=".xml" style="position:fixed;top:-9999px;left:-9999px;opacity:0;" onchange="onFallbackFile(this)">
   </div>
   <span class="file-name" id="fileName">e.g. \\sb-venus-p\xml\2026.xml</span>
   <div class="color-picker-group">
@@ -845,11 +845,7 @@ let fileHandle      = null;
 let fallbackFile    = null;
 let colorsLockedFor = null;
 
-async function browseFile() {
-  // Always trigger the native file input — universally reliable on all browsers,
-  // all PCs, all security configs. FSA handle is acquired separately after selection.
-  document.getElementById('xmlFallbackInput').click();
-}
+function browseFile() { /* label triggers input natively — no JS needed */ }
 
 function onFallbackFile(input) {
   if (!input.files || !input.files[0]) return;
