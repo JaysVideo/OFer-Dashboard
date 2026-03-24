@@ -1174,7 +1174,7 @@ function parsePlayers(teamEl) {
   teamEl.querySelectorAll('player').forEach(p => {
     const spot = n(p.getAttribute('spot'));
     const gp   = n(p.getAttribute('gp'));
-    if (spot === 0 && gp === 0) return; // never played, skip entirely
+    if (spot === 0 && gp === 0) return; // never appeared, skip
 
     const hit = p.querySelector('hitting');
     const sea = p.querySelector('hitseason');
@@ -1199,6 +1199,7 @@ function parsePlayers(teamEl) {
       d, t, hr,
       sb  : n(hit?.getAttribute('sb')),
       sf  : n(hit?.getAttribute('sf')),
+      hbp : n(hit?.getAttribute('hbp')),
       gidp: n(hit?.getAttribute('gdp') || hit?.getAttribute('gidp')),
       roe : n(hit?.getAttribute('roe')),
       savg: sea?.getAttribute('avg') || '',
@@ -1331,7 +1332,11 @@ function renderRoster(elId, side, players, curBtr, isThisBatting) {
   }).join('');
 
   // ── Accordion: show pitchers, subs, anyone not in spots 1-9 ────────────
-  const extras = players.filter(p => p.spot === 0 || p.spot > 9);
+  // Accordion: players outside spots 1-9 who actually had plate appearances
+  const extras = players.filter(p =>
+    (p.spot === 0 || p.spot > 9) &&
+    (p.ab > 0 || p.bb > 0 || p.hbp > 0 || p.sf > 0)  // had at least 1 PA
+  );
   const accEl  = document.getElementById(elId + 'Acc');
   if (accEl) {
     if (extras.length === 0) {
