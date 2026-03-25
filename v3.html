@@ -1211,12 +1211,18 @@ function parseGame(xmlText) {
     xml.querySelectorAll('play').forEach(play => {
       const bEl = play.querySelector('batter');
       if (!bEl) return;
-      const bName  = play.getAttribute('batter') || '';
-      const action = bEl.getAttribute('action')   || '';
-      const desc   = bEl.getAttribute('wheredesc')|| '';
-      const outEl  = bEl.getAttribute('out');
-      if (bName && action) {
-        lastPlayMap[bName.toLowerCase().trim()] = { action, desc, isOut: outEl === '1' };
+      const bName   = play.getAttribute('batter')   || '';
+      const action  = bEl.getAttribute('action')    || '';
+      const decision= bEl.getAttribute('decision')  || '';
+      const desc    = bEl.getAttribute('wheredesc') || '';
+      const outEl   = bEl.getAttribute('out');
+      const roeEl   = bEl.getAttribute('rcherr');
+      if (bName && (action || decision)) {
+        lastPlayMap[bName.toLowerCase().trim()] = {
+          action, decision, desc,
+          isOut: outEl === '1',
+          isRoe: roeEl === '1'
+        };
       }
     });
     window._lastPlayMap = lastPlayMap;
@@ -1367,7 +1373,7 @@ function parsePlayers(teamEl) {
 // ACTION CODE → FLASH LABEL
 // Converts StatCrew action codes to human-readable result strings
 // ════════════════════════════════════════════════════════════════════════════
-function actionToLabel(action, desc) {
+function actionToLabel(action, desc, decision) {
   if (!action) return null;
   const a = action.toUpperCase().trim();
   const d = (desc || '').toLowerCase();
@@ -1419,10 +1425,11 @@ function actionToLabel(action, desc) {
   if (a.startsWith('GDP') || a.startsWith('DP')) return 'GIDP';
 
   // Fielder's choice
-  if (a.startsWith('FC')) return 'FIELDERS CHOICE';
+  if (a === 'FC' || a.startsWith('FC')) return 'FIELDERS CHOICE';
 
-  // Reached on error
-  if (a.startsWith('ROE') || a === 'E') return 'REACHED ON ERROR';
+  // Reached on error — decision="E", action like "E3", "E6" etc
+  const dec = (decision || '').toUpperCase().trim();
+  if (a.startsWith('ROE') || dec === 'E' || /^E\d+$/.test(a)) return 'REACHED ON ERROR';
 
   return null; // unknown — fall back to ofer text
 }
@@ -1795,16 +1802,20 @@ function getAtBatResult(players, batterShort) {
   );
   if (matchedKey) {
     const play = playMap[matchedKey];
-    primary = actionToLabel(play.action, play.desc);
+    primary = actionToLabel(play.action, play.desc, play.decision);
   }
 
   // Fall back to ofer text detail if no play map match
   if (!primary) {
     const looksLikeScore = /^\d+-\d+$/.test(firstItem);
-    if (!looksLikeScore) {
+    if (!looksLikeScore && firstItem) {
       primary = firstItem.toUpperCase();
-    } else {
-      primary = ofer.cls === 'neg' ? 'OUT' : ofer.cls === 'pos' ? 'HIT' : null;
+    } else if (looksLikeScore) {
+      // Check player's roe stat — reached on error looks like 0-fer but isn't an out
+      if (p.roe > 0)      primary = 'REACHED ON ERROR';
+      else if (ofer.cls === 'neg') primary = 'OUT';
+      else if (ofer.cls === 'pos') primary = 'HIT';
+      else                         primary = null;
     }
   }
 
