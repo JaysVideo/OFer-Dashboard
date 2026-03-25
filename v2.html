@@ -136,7 +136,7 @@
   .score-inner{display:flex;align-items:stretch;}
 
   .score-side{
-    flex:1;display:flex;align-items:center;gap:14px;padding:10px 22px;
+    flex:1;display:flex;align-items:center;gap:18px;padding:14px 28px;
     position:relative;overflow:hidden;
   }
   .score-side.vis{background:linear-gradient(135deg, color-mix(in srgb, var(--vis-dark) 90%, transparent) 0%, var(--surface3) 100%);}
@@ -148,9 +148,9 @@
   }
 
   .s-team-info{display:flex;flex-direction:column;gap:2px;}
-  .s-school{font-family:'Oswald',sans-serif;font-size:20px;font-weight:700;letter-spacing:1px;text-transform:uppercase;line-height:1;}
-  .s-record{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;}
-  .s-score-num{font-family:'Oswald',sans-serif;font-size:46px;font-weight:700;line-height:1;min-width:50px;text-align:center;}
+  .s-school{font-family:'Futura Std','Oswald',sans-serif;font-size:28px;font-weight:800;letter-spacing:2px;text-transform:uppercase;line-height:1;}
+  .s-record{font-family:'Share Tech Mono',monospace;font-size:14px;color:var(--muted);letter-spacing:1px;margin-top:3px;}
+  .s-score-num{font-family:'Futura Std','Oswald',sans-serif;font-size:72px;font-weight:900;line-height:1;min-width:70px;text-align:center;}
   .score-side.vis .s-school{color:var(--vis-primary);}
   .score-side.vis .s-score-num{color:var(--vis-primary);}
   .score-side.hom .s-school{color:var(--hom-primary);text-align:right;}
@@ -159,12 +159,12 @@
 
   .score-mid{
     display:flex;flex-direction:column;align-items:center;justify-content:center;
-    padding:8px 20px;background:var(--surface3);border-left:1px solid var(--border);border-right:1px solid var(--border);
-    gap:4px;min-width:120px;
+    padding:12px 28px;background:var(--surface3);border-left:1px solid var(--border);border-right:1px solid var(--border);
+    gap:6px;min-width:180px;
   }
-  .inn-badge{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--live);border:1px solid var(--live);padding:2px 10px;letter-spacing:1px;white-space:nowrap;}
-  .count-txt{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;text-align:center;}
-  .at-bat-txt{font-family:'Share Tech Mono',monospace;font-size:9px;color:#f5a623;letter-spacing:1px;text-align:center;}
+  .inn-badge{font-family:'Futura Std','Oswald',sans-serif;font-size:16px;font-weight:700;color:var(--live);border:2px solid var(--live);padding:4px 14px;letter-spacing:2px;white-space:nowrap;}
+  .count-txt{font-family:'Share Tech Mono',monospace;font-size:14px;color:var(--muted);letter-spacing:1px;text-align:center;margin-top:4px;}
+  .at-bat-txt{font-family:'Share Tech Mono',monospace;font-size:13px;color:#f5a623;letter-spacing:1px;text-align:center;margin-top:3px;}
 
   /* ══ MAIN GRID ═══════════════════════════════════════════════════════════ */
   /* Team toggle tabs */
@@ -1698,11 +1698,11 @@ function updateTabs(visName, homName, battingSide) {
   const homLbl = document.getElementById('homColorLabel');
   if (visLbl) visLbl.textContent = visName || '—';
   if (homLbl) homLbl.textContent = homName || '—';
-  // Auto-select batting team tab
-  if (battingSide && activeTab === 'both') {
-    // Don't override if user manually picked a tab — only auto on first load
-    if (!userPickedTab) {
-      setTab(battingSide === 'V' ? 'vis' : 'hom');
+  // Always follow the batting team — switch every half inning automatically
+  if (battingSide) {
+    const newTab = battingSide === 'V' ? 'vis' : 'hom';
+    if (activeTab !== newTab) {
+      setTab(newTab);
     }
   }
 }
