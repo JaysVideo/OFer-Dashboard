@@ -474,9 +474,9 @@
   </div>
   <div class="side-menu-body">
     <div class="menu-section-label">File</div>
-    <label class="menu-btn" for="xmlFallbackInput">
+    <button class="menu-btn" onclick="browseFile()">
       <span class="menu-icon">📂</span> Select XML File
-    </label>
+    </button>
     <input type="file" id="xmlFallbackInput" accept=".xml" class="menu-file-input" onchange="onFallbackFile(this)">
     <button class="menu-btn red" id="saveOutputBtn" onclick="saveOutput()" disabled style="opacity:0.4;cursor:not-allowed;">
       <span class="menu-icon">💾</span> Save Output File
@@ -989,7 +989,32 @@ let fileHandle      = null;
 let fallbackFile    = null;
 let colorsLockedFor = null;
 
-function browseFile() { /* label triggers input natively — no JS needed */ }
+async function browseFile() {
+  // On https:// use File System Access API — persistent handle, truly live re-reads
+  // On http:// or file:// fall back to standard input
+  if (window.location.protocol === 'https:' && typeof window.showOpenFilePicker === 'function') {
+    try {
+      const [handle] = await window.showOpenFilePicker({
+        types: [{ description: 'XML Files', accept: { 'text/xml': ['.xml'] } }],
+        multiple: false
+      });
+      fileHandle   = handle;
+      fallbackFile = null;
+      colorsLockedFor = null;
+      userPickedTab   = false;
+      const file = await handle.getFile();
+      setFileName(file.name);
+      closeMenu();
+      await readXML();
+      startAutoRefresh();
+    } catch(e) {
+      if (e.name !== 'AbortError') setStat('err', 'COULD NOT OPEN FILE');
+    }
+  } else {
+    // Fallback — standard file input (snapshot only)
+    document.getElementById('xmlFallbackInput').click();
+  }
+}
 
 function onFallbackFile(input) {
   if (!input.files || !input.files[0]) return;
@@ -1001,20 +1026,7 @@ function onFallbackFile(input) {
   closeMenu(); // close the side menu after selection
   readXML();
   startAutoRefresh();
-  // Opportunistically try to get an FSA handle for live re-reads
-  // This is silent — if it fails, fallbackFile snapshot is used instead
-  if (typeof window.showOpenFilePicker === 'function') {
-    window.showOpenFilePicker({
-      types: [{ description: 'XML Files', accept: { 'text/xml': ['.xml'] } }],
-      multiple: false,
-      startIn: fallbackFile
-    }).then(([handle]) => {
-      fileHandle = handle;
-      console.log('FSA handle acquired — live re-reads enabled');
-    }).catch(() => {
-      console.log('FSA not available — using snapshot mode');
-    });
-  }
+  // Fallback path — snapshot only (used on http:// or unsupported browsers)
 }
 
 function setFileName(name) {
