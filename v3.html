@@ -1206,6 +1206,21 @@ function parseGame(xmlText) {
     const strikes  = status?.getAttribute('s')        || '0';
     const curBtr   = status?.getAttribute('batter')   || '';
 
+    // Build last-play map from play-by-play (action codes + location descriptions)
+    const lastPlayMap = {};
+    xml.querySelectorAll('play').forEach(play => {
+      const bEl = play.querySelector('batter');
+      if (!bEl) return;
+      const bName  = play.getAttribute('batter') || '';
+      const action = bEl.getAttribute('action')   || '';
+      const desc   = bEl.getAttribute('wheredesc')|| '';
+      const outEl  = bEl.getAttribute('out');
+      if (bName && action) {
+        lastPlayMap[bName.toLowerCase().trim()] = { action, desc, isOut: outEl === '1' };
+      }
+    });
+    window._lastPlayMap = lastPlayMap;
+
     // Players
     const visPlayers = parsePlayers(visTeam);
     const homPlayers = parsePlayers(homTeam);
@@ -1346,6 +1361,70 @@ function parsePlayers(teamEl) {
     return 0;
   });
   return list;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// ACTION CODE → FLASH LABEL
+// Converts StatCrew action codes to human-readable result strings
+// ════════════════════════════════════════════════════════════════════════════
+function actionToLabel(action, desc) {
+  if (!action) return null;
+  const a = action.toUpperCase().trim();
+  const d = (desc || '').toLowerCase();
+
+  // Strikeouts
+  if (a === 'K' || a === 'KL' || a === 'KC') return 'STRIKEOUT';
+
+  // Home runs (handled by ofer text — fallback here)
+  if (a === 'HR') return 'HOME RUN';
+
+  // Hits
+  if (a === '1B') return 'SINGLE';
+  if (a === '2B') return 'DOUBLE';
+  if (a === '3B') return 'TRIPLE';
+
+  // Walk / HBP
+  if (a === 'BB' || a === 'IBB') return 'WALK';
+  if (a === 'HBP') return 'HIT BY PITCH';
+
+  // Sac fly / Sac bunt
+  if (a.startsWith('SF')) return 'SAC FLY';
+  if (a.startsWith('SH')) return 'SAC BUNT';
+
+  // Flyouts — F + position number(s)
+  if (a.startsWith('F') && /^F\d/.test(a)) {
+    const pos = a.substring(1, 2);
+    const posMap = {'1':'P','2':'C','3':'1B','4':'2B','5':'3B','6':'SS','7':'LF','8':'CF','9':'RF'};
+    const fieldName = {'1':'PITCHER','2':'CATCHER','3':'FIRST BASE','4':'SECOND BASE',
+                       '5':'THIRD BASE','6':'SHORTSTOP','7':'LEFT FIELD','8':'CENTER FIELD','9':'RIGHT FIELD'};
+    return d ? 'FLYOUT ' + d.toUpperCase() : 'F' + pos + ' — ' + (fieldName[pos] || pos);
+  }
+
+  // Popups — P + position
+  if (a.startsWith('P') && /^P\d/.test(a)) {
+    const pos = a.substring(1, 2);
+    const fieldName = {'1':'PITCHER','2':'CATCHER','3':'FIRST BASE','4':'SECOND BASE',
+                       '5':'THIRD BASE','6':'SHORTSTOP','7':'LEFT FIELD','8':'CENTER FIELD','9':'RIGHT FIELD'};
+    return d ? 'POPUP ' + d.toUpperCase() : 'POP — ' + (fieldName[pos] || pos);
+  }
+
+  // Groundouts — G + fielder sequence (e.g. G63 = SS to 1B)
+  if (a.startsWith('G') && /^G\d/.test(a)) {
+    const fieldName = {'1':'P','2':'C','3':'1B','4':'2B','5':'3B','6':'SS','7':'LF','8':'CF','9':'RF'};
+    const firstFielder = fieldName[a.charAt(1)] || a.charAt(1);
+    return d ? 'GROUNDOUT ' + d.toUpperCase() : 'GROUNDOUT — ' + firstFielder;
+  }
+
+  // Double plays
+  if (a.startsWith('GDP') || a.startsWith('DP')) return 'GIDP';
+
+  // Fielder's choice
+  if (a.startsWith('FC')) return 'FIELDER'S CHOICE';
+
+  // Reached on error
+  if (a.startsWith('ROE') || a === 'E') return 'REACHED ON ERROR';
+
+  return null; // unknown — fall back to ofer text
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -1698,15 +1777,40 @@ function getAtBatResult(players, batterShort) {
   const ofer = buildOfer(p);
   if (ofer.cls === 'emp') return null;
 
-  // Extract the detail (the interesting part)
+  // Extract the detail from ofer text
   const parenIdx = ofer.text.indexOf('(');
   const score    = parenIdx > -1 ? ofer.text.substring(0, parenIdx).trim() : ofer.text;
   const detail   = parenIdx > -1 ? ofer.text.substring(parenIdx + 1, ofer.text.lastIndexOf(')')) : ofer.text;
-
-  // Pick the PRIMARY result word (first item) to show big
   const firstItem = detail.split(',')[0].trim();
 
-  return { name: p.name, primary: firstItem.toUpperCase(), score, cls: ofer.cls };
+  // Try to get a precise label from the play-by-play action code first
+  let primary = null;
+  const playMap = window._lastPlayMap || {};
+  const playerKey = (p.short || p.name || '').toLowerCase().trim();
+  // Try to find the player's last play by fuzzy key lookup
+  const playKeys = Object.keys(playMap);
+  const matchedKey = playKeys.find(k =>
+    k === playerKey ||
+    k.split(',')[0] === playerKey.split(',')[0]
+  );
+  if (matchedKey) {
+    const play = playMap[matchedKey];
+    primary = actionToLabel(play.action, play.desc);
+  }
+
+  // Fall back to ofer text detail if no play map match
+  if (!primary) {
+    const looksLikeScore = /^\d+-\d+$/.test(firstItem);
+    if (!looksLikeScore) {
+      primary = firstItem.toUpperCase();
+    } else {
+      primary = ofer.cls === 'neg' ? 'OUT' : ofer.cls === 'pos' ? 'HIT' : null;
+    }
+  }
+
+  if (!primary) return null;
+
+  return { name: p.name, primary, score, cls: ofer.cls };
 }
 
 function showResultFlash(result, side) {
