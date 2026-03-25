@@ -2493,15 +2493,7 @@ function showRecapModal(text) {
     modal = document.createElement('div');
     modal.id = 'recapModal';
     modal.style.cssText = 'position:fixed;inset:0;z-index:1100;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.85);backdrop-filter:blur(6px);';
-    modal.innerHTML = '<div style="background:#0d0f14;border:1px solid #333;border-top:3px solid var(--espn-red);width:min(640px,92vw);max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.8);">'
-      + '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:#111;border-bottom:1px solid #222;">'
-      + '<span style="font-family:'Futura Std','Oswald',sans-serif;font-size:16px;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:#fff;">GAME RECAP</span>'
-      + '<div style="display:flex;gap:10px;align-items:center;">'
-      + '<button onclick="copyRecap()" style="background:var(--espn-red);border:none;color:#fff;font-family:'Futura Std','Oswald',sans-serif;font-size:11px;font-weight:700;padding:5px 14px;cursor:pointer;letter-spacing:1px;text-transform:uppercase;">COPY</button>'
-      + '<button onclick="document.getElementById('recapModal').remove();recapGenerated=false;" style="background:none;border:none;color:#666;font-size:22px;cursor:pointer;">&#x2715;</button>'
-      + '</div></div>'
-      + '<div id="recapText" style="padding:20px 18px;font-family:Georgia,serif;font-size:15px;line-height:1.8;color:#ccc;white-space:pre-wrap;">' + text + '</div>'
-      + '</div>';
+    // (modal built via DOM - see above)
     document.body.appendChild(modal);
   } else {
     var t = document.getElementById('recapText');
