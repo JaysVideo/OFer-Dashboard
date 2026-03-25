@@ -1368,6 +1368,52 @@ function parsePlayers(teamEl) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
+// BATTER NAME MATCHER
+// Handles all StatCrew XML formats: "Wilson,Evan" / "Wilson, Evan" /
+// "Wilson" / "Evan Wilson" / "Wilson, E" / "Wilson,E." etc.
+// ════════════════════════════════════════════════════════════════════════════
+function matchBatter(curBtr, players) {
+  if (!curBtr || !players || !players.length) return -1;
+
+  function norm(s) {
+    return (s || '').toLowerCase()
+      .replace(/\./g, '')      // remove periods (initials)
+      .replace(/,/g, ' ')      // commas → spaces
+      .replace(/\s+/g, ' ')   // collapse whitespace
+      .trim()
+      .split(' ')
+      .filter(Boolean);
+  }
+
+  const curParts = norm(curBtr);
+  if (!curParts.length) return -1;
+
+  let bestIdx   = -1;
+  let bestScore = 0;
+
+  players.forEach((p, idx) => {
+    const nameParts  = norm(p.name);
+    const shortParts = norm(p.short);
+    const allParts   = [...new Set([...nameParts, ...shortParts])];
+
+    // Last name = first token of shortname (StatCrew always "Last,First")
+    const lastName = shortParts[0] || nameParts[0] || '';
+    let score = 0;
+
+    for (const cp of curParts) {
+      if (cp === lastName)                                            score += 10; // exact last
+      else if (allParts.includes(cp))                                score += 5;  // exact any
+      else if (cp.length === 1 && allParts.some(a => a.startsWith(cp))) score += 3; // initial
+      else if (allParts.some(a => a.includes(cp) || cp.includes(a)))   score += 1; // partial
+    }
+
+    if (score > bestScore) { bestScore = score; bestIdx = idx; }
+  });
+
+  return bestScore >= 5 ? bestIdx : -1; // require at least a last name match
+}
+
+// ════════════════════════════════════════════════════════════════════════════
 // ESCALATOR SORT
 // Rotates the lineup so the current batter is always at top,
 // followed by next batters in order wrapping around the lineup.
@@ -1381,12 +1427,7 @@ function escalatorSort(players, curBtr, isThisBatting) {
     return [...lineup, ...bench];
   }
 
-  const curIdx = lineup.findIndex(p =>
-    p.short === curBtr ||
-    p.name  === curBtr ||
-    p.short.toLowerCase() === curBtr.toLowerCase() ||
-    p.name.toLowerCase()  === curBtr.toLowerCase()
-  );
+  const curIdx = matchBatter(curBtr, lineup);
 
   if (curIdx === -1) return [...lineup, ...bench];
 
@@ -1408,12 +1449,7 @@ function renderRoster(elId, side, players, curBtr, isThisBatting, animate=false)
   const ordered = escalatorSort(players, curBtr, isThisBatting);
 
   el.innerHTML = ordered.map((p, idx) => {
-    const isCur = isThisBatting && (
-      p.short === curBtr ||
-      p.name  === curBtr ||
-      p.short.toLowerCase() === curBtr.toLowerCase() ||
-      p.name.toLowerCase()  === curBtr.toLowerCase()
-    );
+    const isCur = isThisBatting && matchBatter(curBtr, [p]) >= 0;
 
     let qLabel = '';
     if (isThisBatting && p.spot > 0) {
@@ -1660,12 +1696,8 @@ function copyIt(btn, text) {
 
 function getAtBatResult(players, batterShort) {
   // Find the player who just batted and extract their result
-  const p = players.find(pl =>
-    pl.short === batterShort ||
-    pl.name  === batterShort ||
-    pl.short.toLowerCase() === batterShort.toLowerCase() ||
-    pl.name.toLowerCase()  === batterShort.toLowerCase()
-  );
+  const matchIdx = matchBatter(batterShort, players);
+  const p = matchIdx >= 0 ? players[matchIdx] : null;
   if (!p) return null;
   const ofer = buildOfer(p);
   if (ofer.cls === 'emp') return null;
