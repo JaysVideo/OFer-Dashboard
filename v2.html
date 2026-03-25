@@ -1393,12 +1393,8 @@ function renderRoster(elId, side, players, curBtr, isThisBatting) {
           const _ac = (_ai > -1 ? ofer.text.substring(_ai)
                     : (ofer.text && ofer.text !== '—' ? '(' + ofer.text + ')' : '')).toUpperCase();
           const safe = _ac.replace(/'/g,"&#39;").replace(/"/g,"&quot;");
-          const _accParen = ofer.text.indexOf('(');
-          const _accScore  = _accParen > -1 ? ofer.text.substring(0, _accParen).trim() : ofer.text;
-          const _accDetail = _accParen > -1 ? ofer.text.substring(_accParen).toUpperCase() : '';
-          const _accDisplay = _accDetail ? `${_accScore} ${_accDetail}` : _accScore.toUpperCase();
           const oferLabel = ofer.cls === 'emp' ? '' :
-            `<div class="acc-ofer ${ofer.cls}">${gameLabel}: ${_accDisplay}</div>`;
+            `<div class="acc-ofer ${ofer.cls}">${gameLabel}: ${ofer.text.toUpperCase()}</div>`;
           return `<div class="acc-card">
             <span class="acc-uni">#${p.uni}</span>
             <div class="acc-info">
