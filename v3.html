@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ESPN-0Fers V2</title>
+<title>ESPN-0Fers V3</title>
 <link href="https://fonts.cdnfonts.com/css/futura-std-4" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,400;0,600;0,700;0,800;1,400;1,600;1,700&family=Oswald:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
@@ -399,54 +399,44 @@
   .empty{text-align:center;padding:50px 16px;font-family:'Share Tech Mono',monospace;color:var(--dimmed);font-size:10px;letter-spacing:1px;line-height:2.8;}
   .empty .ico{font-size:28px;margin-bottom:10px;}
 
-  /* ── At-bat result flash overlay ─────────────────────────────────────── */
-  .result-flash{
-    position:fixed;inset:0;z-index:999;
-    display:flex;align-items:center;justify-content:center;
-    flex-direction:column;gap:8px;
-    pointer-events:none;
+  /* ── At-bat result flash — overlays the current batter's card only ─────── */
+  .pcard{position:relative;overflow:hidden;}
+  .card-result-overlay{
+    position:absolute;inset:0;z-index:10;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:2px;pointer-events:none;
     opacity:0;
   }
-  .result-flash.show{
-    animation: flashIn 0.25s ease forwards, flashOut 0.4s ease 2.6s forwards;
+  .card-result-overlay.show{
+    animation: cardFlashIn 0.2s ease forwards, cardFlashOut 0.4s ease 2.6s forwards;
   }
-  @keyframes flashIn{
-    0%{opacity:0;transform:scale(0.85);}
+  @keyframes cardFlashIn{
+    0%{opacity:0;transform:scale(0.9);}
     100%{opacity:1;transform:scale(1);}
   }
-  @keyframes flashOut{
-    0%{opacity:1;transform:scale(1);}
-    100%{opacity:0;transform:scale(1.05);}
+  @keyframes cardFlashOut{
+    0%{opacity:1;}
+    100%{opacity:0;}
   }
-  .result-flash-bg{
-    position:fixed;inset:0;
-    background:rgba(0,0,0,0.82);
-    backdrop-filter:blur(4px);
+  .card-result-overlay-bg{
+    position:absolute;inset:0;
+    background:rgba(0,0,0,0.88);
   }
-  .result-flash-content{
+  .card-result-primary{
     position:relative;z-index:1;
-    display:flex;flex-direction:column;align-items:center;gap:12px;
-    text-align:center;
-  }
-  .result-flash-name{
     font-family:'Futura Std','Barlow Condensed','Oswald',sans-serif;
-    font-size:22px;font-weight:700;letter-spacing:4px;
-    color:#aaa;text-transform:uppercase;
+    font-size:clamp(28px,4vw,52px);font-weight:900;
+    letter-spacing:1px;text-transform:uppercase;line-height:1;
+    color:#fff;text-shadow:0 0 30px currentColor;
   }
-  .result-flash-result{
+  .card-result-primary.pos{color:#00e676;}
+  .card-result-primary.neg{color:#ff1744;}
+  .card-result-primary.neu{color:#f5a623;}
+  .card-result-score{
+    position:relative;z-index:1;
     font-family:'Futura Std','Barlow Condensed','Oswald',sans-serif;
-    font-size:clamp(48px, 10vw, 110px);font-weight:900;
-    letter-spacing:-2px;text-transform:uppercase;line-height:1;
-    color:#fff;
-    text-shadow:0 0 60px currentColor, 0 4px 20px rgba(0,0,0,0.8);
-  }
-  .result-flash-result.pos{color:#00e676;}
-  .result-flash-result.neg{color:#ff1744;}
-  .result-flash-result.neu{color:#f5a623;}
-  .result-flash-score{
-    font-family:'Futura Std','Barlow Condensed','Oswald',sans-serif;
-    font-size:28px;font-weight:700;letter-spacing:2px;color:#888;
-    text-transform:uppercase;
+    font-size:16px;font-weight:600;letter-spacing:2px;
+    color:#888;text-transform:uppercase;
   }
 
   /* ── Escalator slide animation ────────────────────────────────────────── */
@@ -528,16 +518,6 @@
 <!-- Side menu overlay -->
 <div class="side-menu-overlay" id="menuOverlay" onclick="closeMenu()"></div>
 
-<!-- At-bat result flash overlay -->
-<div class="result-flash" id="resultFlash">
-  <div class="result-flash-bg"></div>
-  <div class="result-flash-content">
-    <div class="result-flash-name" id="flashName"></div>
-    <div class="result-flash-result" id="flashResult"></div>
-    <div class="result-flash-score" id="flashScore"></div>
-  </div>
-</div>
-
 <!-- Slide-out side menu -->
 <div class="side-menu" id="sideMenu">
   <div class="side-menu-header">
@@ -584,7 +564,7 @@
     <div class="espn-badge">ESPN</div>
     <div style="display:flex;flex-direction:column;gap:1px;">
       <div class="hdr-title">0-FER Dashboard</div>
-      <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#555;letter-spacing:2px;">ESPN-0Fers V2</div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#555;letter-spacing:2px;">ESPN-0Fers V3</div>
     </div>
     <div class="live-pill" id="livePill"><span class="live-dot"></span>LIVE</div>
   </div>
@@ -1062,6 +1042,7 @@ let fallbackFile    = null;
 let colorsLockedFor = null;
 let prevBatter      = '';   // previous batter for change detection
 let prevBatterSide  = '';   // which side (vis/hom) prev batter was on
+let flashTimer      = null; // result flash timeout handle
 
 async function browseFile() {
   // On https:// use File System Access API — persistent handle, truly live re-reads
@@ -1260,7 +1241,7 @@ function parseGame(xmlText) {
         prevBatter
       );
       if (result) {
-        showResultFlash(result);
+        showResultFlash(result, prevBatterSide);
         // Delay escalator render by 3s to let flash play first
         const capturedBtr   = curBtr;
         const capturedTopBot = topBot;
@@ -1392,8 +1373,8 @@ function matchBatter(curBtr, players) {
   let bestScore = 0;
 
   players.forEach((p, idx) => {
-    const nameParts  = norm(p.name);
-    const shortParts = norm(p.short);
+    const nameParts  = norm(p.name  || '');
+    const shortParts = norm(p.short || '');
     const allParts   = [...new Set([...nameParts, ...shortParts])];
 
     // Last name = first token of shortname (StatCrew always "Last,First")
@@ -1401,16 +1382,31 @@ function matchBatter(curBtr, players) {
     let score = 0;
 
     for (const cp of curParts) {
-      if (cp === lastName)                                            score += 10; // exact last
-      else if (allParts.includes(cp))                                score += 5;  // exact any
-      else if (cp.length === 1 && allParts.some(a => a.startsWith(cp))) score += 3; // initial
-      else if (allParts.some(a => a.includes(cp) || cp.includes(a)))   score += 1; // partial
+      if (cp === lastName)                                                score += 10;
+      else if (allParts.includes(cp))                                     score += 5;
+      else if (cp.length === 1 && allParts.some(a => a.startsWith(cp)))  score += 3;
+      else if (allParts.some(a => a.includes(cp) || cp.includes(a)))     score += 1;
     }
 
     if (score > bestScore) { bestScore = score; bestIdx = idx; }
   });
 
-  return bestScore >= 5 ? bestIdx : -1; // require at least a last name match
+  // Require last-name-level match (score >= 5) to avoid false positives
+  // But also try a direct string fallback in case norm() stripped something important
+  if (bestScore < 5) {
+    const rawCur = (curBtr || '').toLowerCase().replace(/\s+/g,' ').trim();
+    players.forEach((p, idx) => {
+      const rawShort = (p.short || '').toLowerCase().replace(/\s+/g,' ').trim();
+      const rawName  = (p.name  || '').toLowerCase().replace(/\s+/g,' ').trim();
+      if (rawShort === rawCur || rawName === rawCur ||
+          rawShort.startsWith(rawCur.split(/[,\s]/)[0]) ||
+          rawCur.startsWith(rawShort.split(/[,\s]/)[0])) {
+        if (idx !== bestIdx) { bestIdx = idx; bestScore = 10; }
+      }
+    });
+  }
+
+  return bestScore >= 5 ? bestIdx : -1;
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -1713,32 +1709,40 @@ function getAtBatResult(players, batterShort) {
   return { name: p.name, primary: firstItem.toUpperCase(), score, cls: ofer.cls };
 }
 
-function showResultFlash(result) {
+function showResultFlash(result, side) {
   if (!result || !result.primary) return;
 
-  const flash     = document.getElementById('resultFlash');
-  const flashName = document.getElementById('flashName');
-  const flashRes  = document.getElementById('flashResult');
-  const flashScr  = document.getElementById('flashScore');
+  // Find the current batter's card (first .pcard with .at-bat class in the batting panel)
+  const panelId = (side === 'V' ? 'vis' : 'hom') + 'Panel';
+  const panel   = document.getElementById(panelId);
+  if (!panel) return;
 
-  if (!flash) return;
+  // Target the ▶ NOW card (first card = current batter after escalator sort)
+  const card = panel.querySelector('.pcard.at-bat') || panel.querySelector('.pcard');
+  if (!card) return;
 
-  flashName.textContent = result.name.toUpperCase();
-  flashRes.textContent  = result.primary;
-  flashRes.className    = 'result-flash-result ' + (result.cls || '');
-  flashScr.textContent  = result.score;
+  // Remove any existing overlay
+  const existing = card.querySelector('.card-result-overlay');
+  if (existing) existing.remove();
 
-  // Clear any existing animation
-  flash.classList.remove('show');
+  // Build and inject overlay
+  const overlay = document.createElement('div');
+  overlay.className = 'card-result-overlay';
+  overlay.innerHTML =
+    '<div class="card-result-overlay-bg"></div>' +
+    '<div class="card-result-primary ' + (result.cls||'') + '">' + result.primary + '</div>' +
+    '<div class="card-result-score">' + result.score + '</div>';
+
+  card.appendChild(overlay);
+
+  // Trigger animation
+  void overlay.offsetWidth;
+  overlay.classList.add('show');
+
+  // Remove after 3s
   if (flashTimer) clearTimeout(flashTimer);
-
-  // Force reflow then trigger
-  void flash.offsetWidth;
-  flash.classList.add('show');
-
-  // Remove after animation completes (3s total)
   flashTimer = setTimeout(() => {
-    flash.classList.remove('show');
+    overlay.remove();
     flashTimer = null;
   }, 3000);
 }
