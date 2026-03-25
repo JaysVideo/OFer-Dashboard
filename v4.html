@@ -356,6 +356,12 @@
   .manual-override.active{display:block;}
   .pcard:has(.manual-override.active){border-left-color:#f5a623 !important;}
 
+  .batting-spot-lbl{
+    font-family:'Share Tech Mono',monospace;font-size:9px;
+    color:#555;letter-spacing:1px;text-transform:uppercase;
+    padding:0 8px;white-space:nowrap;align-self:center;
+  }
+
   .copy-btn{
     background:#222;border:1px solid #555;color:#e8dfc8;
     font-family:'Futura Std','Barlow Condensed','Oswald',sans-serif;
@@ -673,6 +679,24 @@
       <button onclick="toggleTheme()" id="themeBtn" class="menu-btn" style="flex:2;padding:6px 10px;font-size:11px;">
         🌙 DARK MODE
       </button>
+    </div>
+    <div class="menu-divider"></div>
+    <div class="menu-section-label">Keyboard Shortcuts</div>
+    <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#666;line-height:2;padding:4px 0;">
+      <div><span style="color:#f5a623;min-width:28px;display:inline-block;">1-9</span> Copy that batting spot</div>
+      <div><span style="color:#f5a623;min-width:28px;display:inline-block;">C</span> Copy all stat lines</div>
+      <div><span style="color:#f5a623;min-width:28px;display:inline-block;">M</span> Manual override on batter</div>
+    </div>
+    <div class="menu-divider"></div>
+    <div class="menu-section-label">Instructions</div>
+    <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#555;line-height:1.9;padding:4px 0;">
+      <div>1. SELECT XML FILE to begin</div>
+      <div>2. SAVE OUTPUT FILE to write</div>
+      <div>&nbsp;&nbsp;&nbsp;Xpression Datalinq XML</div>
+      <div>3. Dashboard auto-refreshes</div>
+      <div>&nbsp;&nbsp;&nbsp;every 10 seconds</div>
+      <div>4. Double-click player name</div>
+      <div>&nbsp;&nbsp;&nbsp;to override stat line</div>
     </div>
     <div class="menu-divider"></div>
     <div class="menu-section-label">Status</div>
@@ -1771,6 +1795,7 @@ function renderRoster(elId, side, players, curBtr, isThisBatting, animate=false)
           '<div class="content-area">' +
             '<div class="ofer-row">' +
               oferHTML +
+              (p.spot >= 1 && p.spot <= 9 ? '<span class="batting-spot-lbl">BATTING: ' + spotOrdinal(p.spot) + '</span>' : '') +
               '<button class="copy-btn" title="Copy (or press ' + p.spot + ')" onclick="copyIt(this,window._manualOverrides?.[\'' + manualKey + '\'\]||\'' + safe + '\'\)">COPY</button>' +
             '</div>' +
           '</div>' +
@@ -2066,6 +2091,11 @@ function ordinalInning(n) {
   const s = ['TH','ST','ND','RD'];
   const v = n % 100;
   return n + (s[(v-20)%10] || s[v] || s[0]);
+}
+
+function spotOrdinal(n) {
+  const map = {1:'1ST',2:'2ND',3:'3RD',4:'4TH',5:'5TH',6:'6TH',7:'7TH',8:'8TH',9:'9TH'};
+  return map[n] || n + 'TH';
 }
 
 function buildInningSummary(xml, battingSide, inning, topBot) {
@@ -2410,7 +2440,14 @@ function copyAllStatLines() {
 // FONT SIZE + THEME
 // ════════════════════════════════════════════════════════════════════════════
 function applyFontSize(val) {
-  document.documentElement.style.fontSize = val + '%';
+  // Scale the player cards and score bar — areas that matter for operators
+  const pct = parseInt(val) / 100;
+  document.querySelectorAll('.pcard, .graphic-body, .stat-bar').forEach(el => {
+    el.style.zoom = pct;
+  });
+  // Also scale the score bar text
+  const sb = document.querySelector('.score-inner');
+  if (sb) sb.style.zoom = pct;
   const lbl = document.getElementById('fontSizeLabel');
   if (lbl) lbl.textContent = val + '%';
 }
@@ -2441,11 +2478,12 @@ function toggleTheme() {
 function updateBasesDiamond(status) {
   const diamond = document.getElementById('basesDiamond');
   if (!diamond) return;
-  const b1 = !!(status && status.getAttribute('first'));
-  const b2 = !!(status && status.getAttribute('second'));
-  const b3 = !!(status && status.getAttribute('third'));
-  diamond.style.display = (b1||b2||b3) ? 'block' : 'none';
-  const on = '#f5a623', off = '#2a2a2a';
+  const b1 = !!(status && status.getAttribute('first')  && status.getAttribute('first').trim());
+  const b2 = !!(status && status.getAttribute('second') && status.getAttribute('second').trim());
+  const b3 = !!(status && status.getAttribute('third')  && status.getAttribute('third').trim());
+  // Always show diamond once game starts
+  diamond.style.display = 'block';
+  const on = '#f5a623', off = '#333';
   const e1 = document.getElementById('base1');
   const e2 = document.getElementById('base2');
   const e3 = document.getElementById('base3');
