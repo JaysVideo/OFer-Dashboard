@@ -357,9 +357,10 @@
   .pcard:has(.manual-override.active){border-left-color:#f5a623 !important;}
 
   .batting-spot-lbl{
-    font-family:'Share Tech Mono',monospace;font-size:9px;
-    color:#555;letter-spacing:1px;text-transform:uppercase;
-    padding:0 8px;white-space:nowrap;align-self:center;
+    font-family:'Share Tech Mono',monospace;font-size:8px;
+    color:#444;letter-spacing:1px;text-transform:uppercase;
+    padding:0 4px;white-space:nowrap;align-self:center;flex-shrink:1;
+    overflow:hidden;text-overflow:ellipsis;max-width:90px;
   }
 
   .copy-btn{
@@ -375,38 +376,26 @@
 
   /* ── ROW 3: Stat bar ─ "BA | 0 HR | 0 RBI | .000 OBP" ──────────────────── */
   .stat-bar{
-    display:flex;align-items:center;
-    background:#111;
-    border:1px solid #555;border-top:2px solid #333;
-    height:26px;
+    display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;
+    background:#0e1018;border-top:1px solid #2a2a2a;
+    min-height:32px;
   }
   .stat-cell{
-    flex:1;display:flex;align-items:center;justify-content:center;gap:4px;
-    padding:0 4px;
-    border-right:1px solid #444;
-    height:100%;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:3px 6px;border-right:1px solid #1e1e1e;overflow:hidden;
   }
   .stat-cell:last-child{border-right:none;}
-  /* value first, then label — matches ESPN: "0 HR", ".000 OBP" */
-  .stat-cell-val{
+  .stat-cell-val,.stat-val{
     font-family:'Futura Std','Barlow Condensed','Oswald',sans-serif;
-    font-size:15px;font-weight:800;color:#fff;letter-spacing:0.5px;
+    font-size:13px;font-weight:700;color:#aaa;letter-spacing:0.5px;
+    white-space:nowrap;display:flex;align-items:center;gap:3px;
   }
   .stat-cell-val.hot{color:#f5a623;}
-  .stat-cell-lbl{
-    font-family:'Futura Std','Barlow Condensed','Oswald',sans-serif;
-    font-size:15px;font-weight:600;color:#fff;letter-spacing:0.5px;
+  .stat-cell-lbl,.stat-lbl{
+    font-family:'Share Tech Mono',monospace;
+    font-size:8px;color:#444;letter-spacing:1px;margin-top:1px;
   }
-  /* BA field: just the value, no label prefix */
-  .stat-cell.ba .stat-cell-lbl{display:none;}
-  .stat-cell.ba .stat-cell-val{font-size:15px;}
-  .stat-cell.ba::after{
-    content:'BA';
-    font-family:'Futura Std','Barlow Condensed','Oswald',sans-serif;
-    font-size:13px;font-weight:600;color:#fff;margin-left:4px;
-  }
-
-  /* hide old elements */
+  .stat-cell.ba .stat-cell-val,.stat-cell.ba .stat-val{font-size:14px;color:#ccc;}
   .stat-row{display:none;}
   .season-strip{display:none;}
   .sb,.sl,.sv{display:none;}
@@ -521,24 +510,13 @@
   .strip-total-lbl{font-size:8px;color:#444;}
   .strip-total-val{font-size:15px;font-weight:900;color:#fff;}
 
-  /* ── BA trend + hit streak on stat bar ──────────────────────────────────── */
-  .stat-bar{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;border-top:1px solid var(--border2);}
-  .stat-cell{
-    display:flex;flex-direction:column;align-items:center;justify-content:center;
-    padding:4px 8px;border-right:1px solid var(--border2);
-  }
-  .stat-cell:last-child{border-right:none;}
-  .stat-val{
-    font-family:'Futura Std','Oswald',sans-serif;font-size:15px;font-weight:700;
-    color:var(--muted);letter-spacing:0.5px;display:flex;align-items:center;gap:3px;
-  }
-  .stat-lbl{font-family:'Share Tech Mono',monospace;font-size:8px;color:#444;letter-spacing:1px;margin-top:1px;}
-  .trend-up{color:#00c97a;font-size:11px;}
-  .trend-dn{color:#ff1744;font-size:11px;}
+  /* ── BA trend + streak badges ─────────────────────────────────────────────── */
+  .trend-up{color:#00c97a;font-size:10px;}
+  .trend-dn{color:#ff1744;font-size:10px;}
   .streak-badge{
     background:#f5a623;color:#000;
     font-family:'Futura Std','Oswald',sans-serif;
-    font-size:9px;font-weight:800;padding:1px 5px;letter-spacing:0.5px;
+    font-size:8px;font-weight:800;padding:1px 4px;letter-spacing:0.5px;
   }
 
   /* ── Game notes ──────────────────────────────────────────────────────────── */
