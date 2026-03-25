@@ -395,6 +395,77 @@
   .empty{text-align:center;padding:50px 16px;font-family:'Share Tech Mono',monospace;color:var(--dimmed);font-size:10px;letter-spacing:1px;line-height:2.8;}
   .empty .ico{font-size:28px;margin-bottom:10px;}
 
+  /* ── Inning Summary Overlay ─────────────────────────────────────────────── */
+  .inning-summary{
+    position:fixed;left:50%;bottom:-100%;transform:translateX(-50%);
+    width:min(680px, 92vw);z-index:900;
+    background:#0d0f14;
+    border:1px solid #333;
+    border-top:3px solid var(--espn-red);
+    box-shadow:0 -8px 40px rgba(0,0,0,0.8);
+    transition:bottom 0.45s cubic-bezier(0.22,1,0.36,1);
+    overflow:hidden;
+    pointer-events:none;
+  }
+  .inning-summary.show{bottom:40px;}
+
+  .inn-sum-header{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:10px 18px 8px 18px;
+    background:#111;border-bottom:1px solid #222;
+  }
+  .inn-sum-title{
+    font-family:'Futura Std','Oswald',sans-serif;
+    font-size:20px;font-weight:900;letter-spacing:3px;
+    text-transform:uppercase;color:#fff;
+  }
+  .inn-sum-team{
+    font-family:'Futura Std','Oswald',sans-serif;
+    font-size:13px;font-weight:700;letter-spacing:2px;
+    text-transform:uppercase;color:#888;
+  }
+  .inn-sum-counts{
+    display:flex;gap:0;border-bottom:1px solid #1a1a1a;
+  }
+  .inn-sum-count{
+    flex:1;display:flex;flex-direction:column;align-items:center;
+    padding:10px 8px;border-right:1px solid #1a1a1a;
+    background:#0a0c10;
+  }
+  .inn-sum-count:last-child{border-right:none;}
+  .inn-sum-count-val{
+    font-family:'Futura Std','Oswald',sans-serif;
+    font-size:36px;font-weight:900;line-height:1;color:#fff;
+  }
+  .inn-sum-count-val.runs{color:var(--espn-red);}
+  .inn-sum-count-lbl{
+    font-family:'Share Tech Mono',monospace;
+    font-size:10px;letter-spacing:2px;color:#555;
+    margin-top:3px;text-transform:uppercase;
+  }
+  .inn-sum-plays{
+    padding:10px 18px 14px 18px;
+    display:flex;flex-direction:column;gap:5px;
+    max-height:160px;overflow-y:auto;
+  }
+  .inn-sum-play{
+    display:flex;align-items:baseline;gap:8px;
+  }
+  .inn-sum-play-name{
+    font-family:'Futura Std','Oswald',sans-serif;
+    font-size:13px;font-weight:700;letter-spacing:1px;
+    text-transform:uppercase;color:#ccc;
+    white-space:nowrap;min-width:130px;
+  }
+  .inn-sum-play-result{
+    font-family:'Futura Std','Oswald',sans-serif;
+    font-size:13px;font-weight:600;letter-spacing:0.5px;
+    text-transform:uppercase;
+  }
+  .inn-sum-play-result.pos{color:#00e676;}
+  .inn-sum-play-result.neg{color:#555;}
+  .inn-sum-play-result.neu{color:#f5a623;}
+
   /* empty */
   .empty{text-align:center;padding:50px 16px;font-family:'Share Tech Mono',monospace;color:var(--dimmed);font-size:10px;letter-spacing:1px;line-height:2.8;}
   .empty .ico{font-size:28px;margin-bottom:10px;}
@@ -514,6 +585,29 @@
 </style>
 </head>
 <body>
+
+<!-- Inning Summary Overlay -->
+<div class="inning-summary" id="inningSummary">
+  <div class="inn-sum-header">
+    <span class="inn-sum-title" id="innSumTitle">END OF 3RD</span>
+    <span class="inn-sum-team" id="innSumTeam"></span>
+  </div>
+  <div class="inn-sum-counts">
+    <div class="inn-sum-count">
+      <div class="inn-sum-count-val runs" id="innSumRuns">0</div>
+      <div class="inn-sum-count-lbl">RUNS</div>
+    </div>
+    <div class="inn-sum-count">
+      <div class="inn-sum-count-val" id="innSumHits">0</div>
+      <div class="inn-sum-count-lbl">HITS</div>
+    </div>
+    <div class="inn-sum-count">
+      <div class="inn-sum-count-val" id="innSumLob">0</div>
+      <div class="inn-sum-count-lbl">LOB</div>
+    </div>
+  </div>
+  <div class="inn-sum-plays" id="innSumPlays"></div>
+</div>
 
 <!-- Side menu overlay -->
 <div class="side-menu-overlay" id="menuOverlay" onclick="closeMenu()"></div>
@@ -1041,6 +1135,9 @@ let fileHandle      = null;
 let fallbackFile    = null;
 let colorsLockedFor = null;
 let prevBatter      = '';   // previous batter for change detection
+let prevInning      = '';   // previous inning number for change detection
+let prevTopBot      = '';   // previous half-inning side
+let inningSummaryShowing = false;
 let prevBatterSide  = '';   // which side (vis/hom) prev batter was on
 let flashTimer      = null; // result flash timeout handle
 
@@ -1281,6 +1378,20 @@ function parseGame(xmlText) {
 
     prevBatter     = curBtr;
     prevBatterSide = topBot;
+
+    // ── Inning summary trigger ────────────────────────────────────────────
+    const halfKey = inning + topBot;
+    if (outs === '3' && !complete && !inningSummaryShowing) {
+      // 3rd out just recorded — show inning summary for the batting team
+      const summaryData = buildInningSummary(xml, topBot, parseInt(inning), topBot);
+      showInningSummary(summaryData);
+    } else if (inningSummaryShowing && halfKey !== (prevInning + prevTopBot)) {
+      // Half inning flipped — hide summary and switch to batting team
+      hideInningSummary();
+    }
+
+    prevInning = inning;
+    prevTopBot = topBot;
 
     // Auto-write output XML on every refresh if file handle is set
     if (outputFileHandle) writeOutputFile();
@@ -1873,6 +1984,103 @@ function triggerEscalatorAnimation(side) {
     card.classList.add(i === 0 ? 'slide-in' : 'slide-up');
     card.style.animationDelay = (i * 0.06) + 's';
   });
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// INNING SUMMARY OVERLAY
+// ════════════════════════════════════════════════════════════════════════════
+function ordinalInning(n) {
+  const s = ['TH','ST','ND','RD'];
+  const v = n % 100;
+  return n + (s[(v-20)%10] || s[v] || s[0]);
+}
+
+function buildInningSummary(xml, battingSide, inning, topBot) {
+  // Find the current half-inning's plays
+  const vh = battingSide; // 'V' or 'H'
+  const teamName = battingSide === 'V'
+    ? (xml.querySelector('team[vh="V"]')?.getAttribute('name') || 'AWAY')
+    : (xml.querySelector('team[vh="H"]')?.getAttribute('name') || 'HOME');
+
+  // Get runs/hits/lob from linescore for this inning
+  const teamEl   = xml.querySelector(`team[vh="${vh}"]`);
+  const lineinn  = teamEl?.querySelector(`lineinn[inn="${inning}"]`);
+  const runs     = parseInt(lineinn?.getAttribute('score') || '0');
+  const hits     = parseInt(lineinn?.getAttribute('hits')  || '0');
+  const lob      = parseInt(lineinn?.getAttribute('lob')   || '0');
+
+  // Get all plays from the matching inning element for this half
+  // Innings in XML are split by batting side inside <inning number="N">
+  let plays = [];
+  xml.querySelectorAll('inning').forEach(inn => {
+    if (inn.getAttribute('number') !== String(inning)) return;
+    const batting = [...inn.querySelectorAll('batting')].find(b => b.getAttribute('vh') === vh);
+    if (!batting) return;
+    batting.querySelectorAll('play').forEach(play => {
+      const bEl  = play.querySelector('batter');
+      if (!bEl) return;
+      const name    = play.getAttribute('batter') || '';
+      const action  = bEl.getAttribute('action')   || '';
+      const decision= bEl.getAttribute('decision') || '';
+      const desc    = bEl.getAttribute('wheredesc') || '';
+      const h       = parseInt(bEl.getAttribute('h')   || '0');
+      const rbi     = parseInt(bEl.getAttribute('rbi') || '0');
+      const out     = bEl.getAttribute('out') === '1';
+      const ab      = parseInt(bEl.getAttribute('ab') || '0');
+      const bb      = parseInt(bEl.getAttribute('bb') || '0');
+      const roe     = parseInt(bEl.getAttribute('rcherr') || '0');
+
+      // Only show noteworthy plays: hits, RBI, walks, errors
+      const noteworthy = h > 0 || rbi > 0 || bb > 0 || roe > 0;
+      if (!noteworthy && out) return; // skip pure outs
+      if (!noteworthy && ab === 0 && bb === 0) return;
+
+      const label = actionToLabel(action, desc, decision) ||
+        (h > 0 ? (action.includes('HR') ? 'HOME RUN' : action.includes('3B') ? 'TRIPLE' :
+                   action.includes('2B') ? 'DOUBLE' : 'SINGLE') :
+         bb > 0 ? 'WALK' : roe > 0 ? 'REACHED ON ERROR' : '');
+      const rbiStr = rbi > 0 ? `, ${rbi} RBI` : '';
+      const cls    = h > 0 || roe > 0 ? 'pos' : bb > 0 ? 'neu' : 'neg';
+
+      if (label) plays.push({ name, label: label + rbiStr, cls });
+    });
+  });
+
+  return { teamName, inning, topBot, runs, hits, lob, plays };
+}
+
+function showInningSummary(data) {
+  const el = document.getElementById('inningSummary');
+  if (!el) return;
+
+  const half = data.topBot === 'V' ? 'TOP' : 'BOT';
+  document.getElementById('innSumTitle').textContent =
+    'END OF ' + half + ' ' + ordinalInning(data.inning);
+  document.getElementById('innSumTeam').textContent  = data.teamName.toUpperCase();
+  document.getElementById('innSumRuns').textContent  = data.runs;
+  document.getElementById('innSumHits').textContent  = data.hits;
+  document.getElementById('innSumLob').textContent   = data.lob;
+
+  const playsEl = document.getElementById('innSumPlays');
+  if (data.plays.length === 0) {
+    playsEl.innerHTML = '<div class="inn-sum-play"><span class="inn-sum-play-result neg">NO RUNS SCORED</span></div>';
+  } else {
+    playsEl.innerHTML = data.plays.map(p =>
+      `<div class="inn-sum-play">
+        <span class="inn-sum-play-name">${p.name.toUpperCase()}</span>
+        <span class="inn-sum-play-result ${p.cls}">${p.label}</span>
+      </div>`
+    ).join('');
+  }
+
+  el.classList.add('show');
+  inningSummaryShowing = true;
+}
+
+function hideInningSummary() {
+  const el = document.getElementById('inningSummary');
+  if (el) el.classList.remove('show');
+  inningSummaryShowing = false;
 }
 
 // ════════════════════════════════════════════════════════════════════════════
