@@ -1422,18 +1422,55 @@ function parseGame(xmlText) {
     const strikes  = status?.getAttribute('s')        || '0';
     const curBtr   = status?.getAttribute('batter')   || '';
 
-    // Build last-play map from play-by-play (action codes + location descriptions)
+    // Build last-play map — supports both <batter> element format AND narrative-only format
     const lastPlayMap = {};
     xml.querySelectorAll('play').forEach(play => {
-      const bEl = play.querySelector('batter');
-      if (!bEl) return;
-      const bName   = play.getAttribute('batter')   || '';
-      const action  = bEl.getAttribute('action')    || '';
-      const decision= bEl.getAttribute('decision')  || '';
-      const desc    = bEl.getAttribute('wheredesc') || '';
-      const outEl   = bEl.getAttribute('out');
-      const roeEl   = bEl.getAttribute('rcherr');
+      const bEl      = play.querySelector('batter');
+      const bName    = play.getAttribute('batter') || '';
+      const narrative= play.querySelector('narrative');
+      const narrText = narrative ? narrative.getAttribute('text') : '';
+
+      let action = '', decision = '', desc = '';
+
+      if (bEl) {
+        // Format A: has <batter> element with action/decision attributes
+        const ab_v = parseInt(bEl.getAttribute('ab') || '0');
+        action   = bEl.getAttribute('action')   || '';
+        decision = bEl.getAttribute('decision') || '';
+        desc     = bEl.getAttribute('wheredesc') || '';
+        // Skip non-PA plays (runner/sub plays with batter element but no real PA)
+        if (ab_v < 1 && !action && !decision) return;
+      } else if (narrText && bName) {
+        // Format B: narrative-only — parse from text
+        // Skip runner/substitution plays (no real PA)
+        const narrLower = narrText.toLowerCase();
+        const isRunnerPlay = (
+          narrLower.includes(' stole ') ||
+          narrLower.includes(' advanced ') ||
+          narrLower.includes(' scored') ||
+          narrLower.includes(' to p for ') ||
+          narrLower.includes('picked off') ||
+          narrLower.includes('no play') ||
+          /^[a-z]+ to (p|c|1b|2b|3b|ss|lf|cf|rf) for [a-z]+/i.test(narrText)
+        );
+        // Also skip if the narrative doesn't start with the batter's name or initial
+        const bLast = bName.split(',')[0].toLowerCase();
+        const startsWithBatter = narrLower.startsWith(bName.toLowerCase()) ||
+          narrLower.startsWith(bLast);
+        if (isRunnerPlay || !startsWithBatter) return;
+
+        const parsed = parseNarrativeAction(narrText, bName);
+        if (!parsed) return;
+        action   = parsed.action;
+        decision = parsed.decision;
+        desc     = parsed.desc;
+      } else {
+        return; // nothing to work with
+      }
+
       if (bName && (action || decision)) {
+        const outEl = bEl ? bEl.getAttribute('out')    : (action === 'K' || action === 'G' || action === 'F' || action === 'P' || action === 'GDP' ? '1' : '0');
+        const roeEl = bEl ? bEl.getAttribute('rcherr') : (action === 'E' ? '1' : '0');
         lastPlayMap[bName.toLowerCase().trim()] = {
           action, decision, desc,
           isOut: outEl === '1',
@@ -1442,6 +1479,8 @@ function parseGame(xmlText) {
       }
     });
     window._lastPlayMap = lastPlayMap;
+
+
 
     // Players
     const visPlayers = parsePlayers(visTeam);
@@ -1632,6 +1671,75 @@ function parsePlayers(teamEl) {
     return 0;
   });
   return list;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// NARRATIVE TEXT → ACTION + DESCRIPTION
+// Parses StatBroadcast narrative strings when no <batter> element exists
+// e.g. "Smith hit by pitch (1-1 BK)" → { action:'HBP', decision:'HBP', desc:'' }
+// ════════════════════════════════════════════════════════════════════════════
+function parseNarrativeAction(narrative, batterName) {
+  if (!narrative) return null;
+  // Strip batter name from start
+  var text = narrative.trim();
+  var nameVariants = [batterName, (batterName||'').split(',').reverse().join(' ').trim()];
+  for (var nv of nameVariants) {
+    if (nv && text.toLowerCase().startsWith(nv.toLowerCase())) {
+      text = text.substring(nv.length).trim();
+      break;
+    }
+  }
+  // Strip count and pitch sequence in parens at end
+  text = text.replace(/\s*\([^)]*\)\s*[;.]?\s*$/, '').trim();
+  // Strip RBI/runner info after semicolon
+  text = text.replace(/\s*;.*$/, '').trim();
+  // Strip trailing punctuation
+  text = text.replace(/[.,;]+$/, '').trim();
+  var t = text.toLowerCase();
+
+  // Map to action codes
+  if (/struck out/.test(t))                        return { action:'K',   decision:'K',   desc:'' };
+  if (/hit by pitch/.test(t))                      return { action:'HBP', decision:'HBP', desc:'' };
+  if (/walked/.test(t))                            return { action:'BB',  decision:'BB',  desc:'' };
+  if (/homered/.test(t)) {
+    var loc = t.replace(/.*homered\s*(to\s*)?/,'').replace(/,.*$/,'').trim();
+    return { action:'HR', decision:'HR', desc: loc };
+  }
+  if (/tripled/.test(t)) {
+    var loc2 = t.replace(/.*tripled\s*(down|to|through|up|into)?\s*/,'').replace(/,.*$/,'').trim();
+    return { action:'3B', decision:'3B', desc: loc2 };
+  }
+  if (/doubled/.test(t)) {
+    var loc3 = t.replace(/.*doubled\s*(down|to|through|up|into)?\s*/,'').replace(/,.*$/,'').trim();
+    return { action:'2B', decision:'2B', desc: loc3 };
+  }
+  if (/singled/.test(t)) {
+    var loc4 = t.replace(/.*singled\s*(to|through|up|down|into)?\s*/,'').replace(/,.*$/,'').trim();
+    return { action:'1B', decision:'1B', desc: loc4 };
+  }
+  if (/grounded into double play/.test(t))         return { action:'GDP', decision:'GDP', desc:'' };
+  if (/grounded out/.test(t)) {
+    var loc5 = t.replace(/grounded out (to )?/,'').replace(/,.*$/,'').trim();
+    return { action:'G',  decision:'G',  desc: 'to ' + loc5 };
+  }
+  if (/flied out/.test(t)) {
+    var loc6 = t.replace(/flied out (to )?/,'').replace(/,.*$/,'').trim();
+    return { action:'F',  decision:'F',  desc: 'to ' + loc6 };
+  }
+  if (/lined out/.test(t)) {
+    var loc7 = t.replace(/lined out (to )?/,'').replace(/,.*$/,'').trim();
+    return { action:'F',  decision:'F',  desc: 'to ' + loc7 };
+  }
+  if (/popped up/.test(t)) {
+    var loc8 = t.replace(/popped up (to )?/,'').replace(/,.*$/,'').trim();
+    return { action:'P',  decision:'P',  desc: 'to ' + loc8 };
+  }
+  if (/reached on a fielder.s choice/.test(t))    return { action:'FC',  decision:'FC',  desc:'' };
+  if (/reached on a.*error/.test(t))              return { action:'E',   decision:'E',   desc:'' };
+  if (/sacrifice fly/.test(t) || /sac fly/.test(t)) return { action:'SF', decision:'SF', desc:'' };
+  if (/sacrifice bunt/.test(t) || /sac bunt/.test(t)) return { action:'SH', decision:'SH', desc:'' };
+
+  return null; // couldn't parse
 }
 
 // ════════════════════════════════════════════════════════════════════════════
