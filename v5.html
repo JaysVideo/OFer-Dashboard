@@ -1487,7 +1487,7 @@ function parseGame(xmlText) {
           narrLower.includes('pinch hit') ||
           narrLower.includes('pinch ran') ||
           // Sub to DH, PH, PR positions
-          /^[a-z.,'\- ]+ to (p|c|dh|dp|1b|2b|3b|ss|lf|cf|rf|ph|pr)(\s+for\s+[a-z.,'\- ]+)?\s*\.?\s*$/i.test(narrText)
+          isSub(narrText)
         );
         // Skip if narrative doesn't start with the batter's name
         const bLast = bName.split(',')[0].toLowerCase();
@@ -1828,6 +1828,28 @@ function parseNarrativeAction(narrative, batterName) {
     return { action:'SH', decision:'SH', desc:'' };
 
   return null; // couldn't parse
+}
+
+function isSub(narrText) {
+  // Detect substitution/position-change announcements like "Sin, A to dp."
+  // Must NOT match plate appearance plays like "Morris, Mi flied out to cf"
+  var n = narrText.trim().replace(/\([^)]*\)/g,'').trim();
+  n = n.replace(/;.*$/,'').trim().replace(/[. ]+$/,'').trim();
+  var parts = n.split(/\s+/);
+  // If any word before "to" is an action verb, it's a PA not a sub
+  var actionVerbs = {out:1,singled:1,doubled:1,tripled:1,homered:1,walked:1,
+    struck:1,flied:1,lined:1,fouled:1,grounded:1,popped:1,reached:1,
+    hit:1,advanced:1,scored:1,stole:1};
+  var toIdx = -1;
+  for (var i=parts.length-1;i>=0;i--) { if (parts[i].toLowerCase()==='to'){toIdx=i;break;} }
+  if (toIdx < 0) return false;
+  for (var j=0;j<toIdx;j++) { if (actionVerbs[parts[j].toLowerCase().replace(/[.,]/,'')]) return false; }
+  var pos = (parts[toIdx+1]||'').toLowerCase().replace(/[.]/g,'');
+  var validPos = /^(p|c|dh|dp|1b|2b|3b|ss|lf|cf|rf|ph|pr|of|if)$/i;
+  if (toIdx === parts.length-2) return validPos.test(pos);
+  // "to p for Name" pattern
+  if (toIdx+3 <= parts.length && (parts[toIdx+2]||'').toLowerCase()==='for') return validPos.test(pos);
+  return false;
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -3096,39 +3118,27 @@ function renderScorecard() {
           /\bscored\b/.test(nm) || nl.includes('picked off') ||
           nl.includes('pinch hit') || nl.includes('pinch ran') ||
           nl.includes('mound visit') || nl.includes('no play') ||
-          /^[a-z.,\'\- ]+ to (p|c|dh|dp|1b|2b|3b|ss|lf|cf|rf|ph|pr)/i.test(narrText);
+          isSub(narrText);
         var bLast = bname.split(',')[0].toLowerCase();
         var starts = nl.startsWith(bname.toLowerCase()) || nl.startsWith(bLast);
         if (skip || !starts) return;
-        if (/struck out/.test(nl))       action = /looking/.test(nl) ? 'KL' : 'K';
-        else if (/hit by pitch/.test(nl)) action = 'HBP';
-        else if (/walked/.test(nl))       action = 'BB';
-        else if (/homered/.test(nl))      action = 'HR';
-        else if (/tripled/.test(nl))      action = '3B';
-        else if (/doubled/.test(nl))      action = '2B';
-        else if (/singled/.test(nl))      action = '1B';
-        else if (/grounded into double play|lined into double play/.test(nl)) action = 'GDP';
-        else if (/infield fly/.test(nl))  action = 'IFF';
-        else if (/grounded out/.test(nl)) action = 'GO';
-        else if (/flied out|fouled out|lined out/.test(nl)) {
-          if (/sacrifice fly|sac fly|\bsf\b/.test(nl)) action = 'SF';
-          else action = 'FO';
-        }
-        else if (/popped up|popped out/.test(nl)) action = 'PO';
-        else if (/fielder.s choice/.test(nl))     action = 'FC';
-        else if (/reached.*(error|muffed)/.test(nl)) action = 'E';
-        else if (/sacrifice bunt|sac bunt|\bsac\b/.test(nl)) action = 'SH';
-        else return;
+        // Use a sentinel to trigger narrative-based codeToSym directly
+        if (/struck out|hit by pitch|walked|homered|tripled|doubled|singled|grounded out|grounded into double play|lined into double play|flied out|fouled out|lined out|popped up|popped out|infield fly|fielder.s choice|reached.*(error|muffed)|sacrifice bunt|sac bunt|sacrifice fly/.test(nl)) {
+          action = 'NARR'; // sentinel: let codeToSym parse from narrText
+        } else return;
       }
 
       var sym = codeToSym(action, narrText);
       if (!sym) return;
-      // Store under ALL name variants so lookup always finds a match
-      var keys = nameKeys(bname);
-      keys.forEach(function(key) {
-        if (!map[key]) map[key] = {};
-        var existing = map[key][innNum] || '';
-        map[key][innNum] = existing ? existing + '/' + sym : sym;
+      // Store under primary key only, register aliases separately
+      var primaryKey = bname.toLowerCase().trim();
+      if (!map[primaryKey]) map[primaryKey] = {};
+      var existing = map[primaryKey][innNum] || '';
+      map[primaryKey][innNum] = existing ? existing + '/' + sym : sym;
+      // Register all name variants pointing to primary key
+      if (!map.__aliases__) map.__aliases__ = {};
+      nameKeys(bname).forEach(function(alias) {
+        if (alias !== primaryKey) map.__aliases__[alias] = primaryKey;
       });
     }
 
@@ -3156,39 +3166,97 @@ function renderScorecard() {
     return map;
   }
 
+  // fieldPos: extract fielder position number from location string
+  function fieldPos(loc) {
+    if (!loc) return '';
+    var l = (loc || '').toLowerCase().trim();
+    if (l.indexOf('center') > -1) return '8';
+    var pm = {'p':'1','pitcher':'1','c':'2','catcher':'2','1b':'3','first base':'3','first':'3',
+              '2b':'4','second base':'4','second':'4','3b':'5','third base':'5','third':'5',
+              'ss':'6','shortstop':'6','short':'6','lf':'7','left field':'7',
+              'cf':'8','center field':'8','rf':'9','right field':'9'};
+    // Try longest match first
+    var keys = Object.keys(pm).sort(function(a,b){return b.length-a.length;});
+    for (var i=0;i<keys.length;i++) {
+      if (l.indexOf(keys[i]) === 0) return pm[keys[i]];
+    }
+    return '';
+  }
+
   function codeToSym(code, narr) {
     var c = (code || '').toUpperCase();
     var n = (narr || '').toLowerCase();
-    if (c === 'K' || c === 'KL')            return /looking/.test(n) ? 'K̲' : 'K';
-    if (c === 'HBP')                         return 'HBP';
-    if (c === 'BB' || c === 'IBB')           return 'BB';
-    if (c === 'HR')                          return 'HR';
-    if (c.startsWith('3'))                   return '3B';
-    if (c.startsWith('2'))                   return '2B';
-    if (c === '1B' || c === 'S')             return '1B';
-    if (c === 'GDP' || c.includes('GDP'))    return 'GDP';
-    if (c === 'FC')                          return 'FC';
-    if (c === 'E' || c.startsWith('E'))      return 'E';
-    if (c === 'SF' || c === 'SF8' || c === 'SF7' || c === 'SF9') return 'SF';
-    if (c === 'SH' || c.startsWith('SH'))    return 'SH';
-    if (c === 'IFF')                         return 'IFF';
-    if (/^G/.test(c))                        return 'GO';
-    if (/^F/.test(c))                        return /sacrifice/i.test(n) ? 'SF' : 'FO';
-    if (/^P/.test(c))                        return 'PO';
+
+    // Extract location description from narrative for position suffix
+    // Strip batter name, parens, runner info
+    var loc = '';
+    var locMatch = n.replace(/^[^a-z]*[a-z,. ]+ (flied|lined|fouled|grounded|popped|singled|doubled|tripled|homered)/,'')
+                    .replace(/\s*\([^)]*\)\s*/,'').replace(/;.*$/,'').replace(/,.*$/,'').trim();
+
+    // Parse inline from narrative when we have it
+    if (/struck out/.test(n))     return /looking/.test(n) ? 'KL' : 'K';
+    if (/hit by pitch/.test(n))   return 'HBP';
+    if (/walked/.test(n))         return 'BB';
+    if (/intentionally walked|was intentionally walked/.test(n)) return 'IBB';
+    if (/homered/.test(n))        return 'HR';
+    if (/tripled/.test(n))        return '3B';
+    if (/doubled/.test(n)) {
+      if (/ground.rule|ground rule/.test(n)) return 'GRD';
+      return '2B';
+    }
+    if (/singled/.test(n))        return '1B';
+    if (/grounded into double play|lined into double play/.test(n)) return 'GDP';
+    if (/infield fly/.test(n))    { var p=fieldPos(n.replace(/.*infield fly\s*(to\s*)?/,'')); return 'IFF'+(p?p:''); }
+    if (/grounded out/.test(n))   { var p=fieldPos(n.replace(/.*grounded out\s*(to\s*)?/,'').replace(/,.*$|\..*$/,'')); return 'G'+(p?p:''); }
+    if (/flied out/.test(n)) {
+      if (/sacrifice fly|\bsf\b/.test(n)) return 'SF';
+      var p=fieldPos(n.replace(/.*flied out\s*(to\s*)?/,'').replace(/,.*$|\..*$/,'')); return 'F'+(p?p:'');
+    }
+    if (/fouled out/.test(n))     { var p=fieldPos(n.replace(/.*fouled out\s*(to\s*)?/,'').replace(/,.*$|\..*$/,'')); return 'F'+(p?p:''); }
+    if (/lined out/.test(n))      { var p=fieldPos(n.replace(/.*lined out\s*(to\s*)?/,'').replace(/,.*$|\..*$/,'')); return 'L'+(p?p:''); }
+    if (/popped up/.test(n) || /popped out/.test(n)) { var p=fieldPos(n.replace(/.*popped (up|out)\s*(to\s*)?/,'').replace(/,.*$|\..*$/,'')); return 'P'+(p?p:''); }
+    if (/fielder.s choice/.test(n))   return 'FC';
+    if (/reached.*(error|muffed)/.test(n)) return 'E';
+    if (/batter.s interference/.test(n))   return 'KI';
+    if (/sacrifice bunt|sac bunt/.test(n)) return 'SH';
+    if (/out at (first|second|third|home)/.test(n)) return 'FC';
+    if (/sacrifice fly/.test(n))  return 'SF';
+
+    // Fall back to action code
+    if (c === 'K' || c === 'KL')  return /looking/.test(n) ? 'KL' : 'K';
+    if (c === 'HBP')  return 'HBP';
+    if (c === 'BB' || c === 'IBB') return c;
+    if (c === 'HR')   return 'HR';
+    if (/^3/.test(c)) return '3B';
+    if (/^2/.test(c)) return '2B';
+    if (c === '1B' || c === 'S') return '1B';
+    if (c.indexOf('GDP') > -1)   return 'GDP';
+    if (c === 'FC')   return 'FC';
+    if (/^E/.test(c)) return 'E';
+    if (c === 'SF' || /^SF/.test(c)) return 'SF';
+    if (/^SH/.test(c)) return 'SH';
+    if (/^G/.test(c)) return 'G';
+    if (/^F/.test(c)) return 'F';
+    if (/^L/.test(c)) return 'L';
+    if (/^P/.test(c)) return 'P';
     return null;
   }
 
   function symColor(sym) {
-    if (!sym) return '#666';
+    if (!sym) return '#444';
     var s = sym.toUpperCase();
-    if (s === 'HR')  return '#f5a623';
+    if (s === 'HR' || s === 'GRD')  return '#f5a623';
     if (s === '3B' || s === '2B' || s === '1B') return '#00c97a';
-    if (s === 'K' || s === 'K̲') return '#ff4444';
-    if (s === 'GDP') return '#ff6666';
-    if (s === 'BB' || s === 'HBP' || s === 'IBB') return '#888';
-    if (s === 'SF' || s === 'SH') return '#aaa';
-    if (s === 'E')   return '#ff8c00';
-    if (s === 'FC')  return '#999';
+    if (s === 'K' || s === 'KL' || s === 'KI') return '#ff4444';
+    if (s === 'GDP')  return '#ff6666';
+    if (s === 'BB' || s === 'IBB' || s === 'HBP') return '#888';
+    if (s === 'SF' || s === 'SH')   return '#aaa';
+    if (s.charAt(0) === 'E')        return '#ff8c00';
+    if (s === 'FC')                 return '#888';
+    // Outs — flyout (F), groundout (G), lineout (L), popup (P), IFF
+    if (s.charAt(0) === 'F' || s.charAt(0) === 'G' ||
+        s.charAt(0) === 'L' || s.charAt(0) === 'P' ||
+        s.indexOf('IFF') === 0)     return '#556';
     return '#555';
   }
 
@@ -3262,11 +3330,16 @@ function renderScorecard() {
       var rowBg   = idx % 2 === 0 ? 'background:#0d0d0d;' : 'background:#111;';
       if (isExtra) rowBg = 'background:#0a0a0a;opacity:0.75;';
 
-      // Find PA map using all name key variants
+      // Resolve name via aliases then get PA data
       var pm = {};
-      var lookupKeys = nameKeys(p.short).concat(nameKeys(p.name));
-      for (var li = 0; li < lookupKeys.length; li++) {
-        if (paMap[lookupKeys[li]]) { pm = paMap[lookupKeys[li]]; break; }
+      var _aliases = paMap.__aliases__ || {};
+      var _lookupKeys2 = nameKeys(p.short).concat(nameKeys(p.name));
+      for (var li2 = 0; li2 < _lookupKeys2.length; li2++) {
+        var _k2 = _lookupKeys2[li2];
+        var _resolved = _aliases[_k2] || _k2;
+        if (paMap[_resolved] && paMap[_resolved] !== paMap.__aliases__) {
+          pm = paMap[_resolved]; break;
+        }
       }
 
       html += '<tr style="' + rowBg + '">';
