@@ -1524,7 +1524,12 @@ function parseGame(xmlText) {
 
     // ── Batter change detection: show result flash + escalator animation ──
     const battingSidePlayers = topBot === 'V' ? visPlayers : homPlayers;
-    const batterChanged = curBtr && prevBatter && curBtr !== prevBatter;
+
+    // Only fire flash when batter changes WITHIN the same half-inning
+    // Don't flash on half-inning flips (last batter of previous half)
+    // or on full inning changes (new inning same side)
+    const halfChanged    = topBot !== prevTopBot;
+    const batterChanged  = curBtr && prevBatter && curBtr !== prevBatter && !halfChanged;
 
     if (batterChanged) {
       // The previous batter just finished their PA — show their result
@@ -1616,6 +1621,9 @@ function parsePlayers(teamEl) {
     const d    = n(hit?.getAttribute('double'));
     const t    = n(hit?.getAttribute('triple'));
     const hr   = n(hit?.getAttribute('hr'));
+    // Flag: does this XML provide explicit hit-type breakdowns?
+    // If not, s is derived (h-d-t-hr) and may not reflect actual singles
+    const hasHitTypes = !!(hit?.getAttribute('double') || hit?.getAttribute('single'));
     const ab   = n(hit?.getAttribute('ab'));
     const bb   = n(hit?.getAttribute('bb'));
     const hbp  = n(hit?.getAttribute('hbp'));
@@ -1652,6 +1660,7 @@ function parsePlayers(teamEl) {
       bb, hbp, sf,
       s   : Math.max(0, h - d - t - hr),
       d, t, hr,
+      hasHitTypes,
       sb  : n(hit?.getAttribute('sb')),
       gidp: n(hit?.getAttribute('gdp') || hit?.getAttribute('gidp')),
       roe : n(hit?.getAttribute('roe')),
@@ -2104,7 +2113,7 @@ function buildOfer(p) {
     // RULE 7: Most important first: HR > 3B > 2B > 1B
     // RULE 5: Spell out single HR type; multiple = "X HR"
     if (hr > 0) {
-      parts.push(hr === 1 ? hrLabel(rbi, s, d, t, p.hbp||0, p.sf||0) : `${hr} HR`);
+      parts.push(hr === 1 ? hrLabel(rbi, s, d, t, p.hbp||0, p.sf||0, p.hasHitTypes) : `${hr} HR`);
     }
     if (t > 0) parts.push(t===1 ? 'Triple'  : `${t} Triples`);
     if (d > 0) parts.push(d===1 ? 'Double'  : `${d} Doubles`);
@@ -2156,24 +2165,25 @@ function buildOfer(p) {
 // RULE 5: infer HR type from RBI count
 // Accounts for ALL other RBI sources — hits, HBP, sac fly — before
 // estimating how many RBI came from the home run specifically.
-function hrLabel(rbi, s, d, t, hbp=0, sf=0) {
-  const otherRbiSources = s + d + t + hbp + sf;
+function hrLabel(rbi, s, d, t, hbp=0, sf=0, hasHitTypes=true) {
+  // If XML doesn't provide explicit hit-type breakdowns (double/triple/single attrs),
+  // s is derived (h - d - t - hr) and may not be real singles used for RBI.
+  // In that case, trust rbi directly without subtracting unconfirmed singles.
+  const knownOtherRbi = hasHitTypes
+    ? (s + d + t + hbp + sf)   // we know exact hit types — subtract them
+    : (d + t + hbp + sf);      // only subtract confirmed non-singles
 
-  if (otherRbiSources === 0) {
-    // No other RBI sources — all RBI came from the HR
-    if (rbi >= 4) return 'Grand Slam';
-    if (rbi === 3) return '3-Run Home Run';
-    if (rbi === 2) return '2-Run Home Run';
-    return 'Solo Home Run';
-  }
-
-  // Subtract minimum RBI attributable to other sources (1 per source)
-  // This gives the maximum RBI the HR could have produced
-  const estHrRbi = Math.max(0, rbi - otherRbiSources);
+  const estHrRbi = Math.max(0, rbi - knownOtherRbi);
 
   if (estHrRbi >= 4) return 'Grand Slam';
   if (estHrRbi === 3) return '3-Run Home Run';
   if (estHrRbi === 2) return '2-Run Home Run';
+  if (estHrRbi === 1) return 'Solo Home Run';
+
+  // Fallback — use raw rbi if estimate is 0 but we know there was an HR
+  if (rbi >= 4) return 'Grand Slam';
+  if (rbi === 3) return '3-Run Home Run';
+  if (rbi === 2) return '2-Run Home Run';
   return 'Solo Home Run';
 }
 
