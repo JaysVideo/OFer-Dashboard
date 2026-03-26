@@ -1506,12 +1506,14 @@ function parseGame(xmlText) {
       }
 
       if (bName && (action || decision)) {
-        const outEl = bEl ? bEl.getAttribute('out')    : (action === 'K' || action === 'G' || action === 'F' || action === 'P' || action === 'GDP' ? '1' : '0');
-        const roeEl = bEl ? bEl.getAttribute('rcherr') : (action === 'E' ? '1' : '0');
+        const outEl  = bEl ? bEl.getAttribute('out')    : (action === 'K' || action === 'G' || action === 'F' || action === 'P' || action === 'GDP' ? '1' : '0');
+        const roeEl  = bEl ? bEl.getAttribute('rcherr') : (action === 'E' ? '1' : '0');
+        const paRbi  = bEl ? parseInt(bEl.getAttribute('rbi') || '0') : 0;
         lastPlayMap[bName.toLowerCase().trim()] = {
           action, decision, desc,
           isOut: outEl === '1',
-          isRoe: roeEl === '1'
+          isRoe: roeEl === '1',
+          paRbi                           // per-PA RBI from batter element
         };
       }
     });
@@ -2193,7 +2195,18 @@ function buildOfer(p) {
     // RULE 7: Most important first: HR > 3B > 2B > 1B
     // RULE 5: Spell out single HR type; multiple = "X HR"
     if (hr > 0) {
-      parts.push(hr === 1 ? hrLabel(rbi, s, d, t, p.hbp||0, p.sf||0, p.hasHitTypes) : `${hr} HR`);
+      // Use per-PA rbi from lastPlayMap if available — avoids grand slam miscalc
+      const _key = (p.short || p.name || '').toLowerCase().trim();
+      const _pm  = window._lastPlayMap ? window._lastPlayMap[_key] : null;
+      const _paRbi = (_pm && _pm.action === 'HR' && _pm.paRbi != null) ? _pm.paRbi : null;
+      if (_paRbi !== null) {
+        // Direct per-PA rbi: 1=solo, 2=2-run, 3=3-run, 4=grand slam
+        const _lbl = _paRbi >= 4 ? 'Grand Slam' : _paRbi === 3 ? '3-Run Home Run' :
+                     _paRbi === 2 ? '2-Run Home Run' : 'Solo Home Run';
+        parts.push(_lbl);
+      } else {
+        parts.push(hr === 1 ? hrLabel(rbi, s, d, t, p.hbp||0, p.sf||0, p.hasHitTypes) : `${hr} HR`);
+      }
     }
     if (t > 0) parts.push(t===1 ? 'Triple'  : `${t} Triples`);
     if (d > 0) parts.push(d===1 ? 'Double'  : `${d} Doubles`);
@@ -3037,72 +3050,79 @@ function renderScorecard() {
   var visName = window._lastVisName || 'AWAY';
   var homName = window._lastHomName || 'HOME';
 
-  // ── Collect plate appearances per player per inning from play-by-play ──
-  // Map: { "V|spotNum" : { 1: 'HR', 2: 'K', ... } }
+  // ── Collect plate appearances per player per inning ────────────────────
+  // Both formats: walk <inning number="N"><batting vh="V|H"><play> DOM structure
+  // innseq = batting order position within half (NOT inning number) — ignore it
+  // Inning number always comes from the <inning> parent element
   function buildPaMap(vh) {
-    var map = {};  // key = uni, value = { innNum: symbol }
+    var map = {};
+
+    function recordPlay(bname, innNum, narrText, bEl) {
+      if (!bname || !innNum) return;
+      var action = '';
+
+      if (bEl) {
+        var ab  = parseInt(bEl.getAttribute('ab')  || '0');
+        var av  = bEl.getAttribute('action')   || '';
+        var dv  = bEl.getAttribute('decision')  || '';
+        if (ab < 1 && !av && !dv) return;
+        action = dv || av;
+      } else {
+        if (!narrText) return;
+        var nl  = narrText.toLowerCase();
+        var nm  = nl.split(';')[0].trim();
+        var skip = nm.includes(' stole ') || nm.includes(' advanced ') ||
+          /\bscored\b/.test(nm) || nl.includes('picked off') ||
+          nl.includes('pinch hit') || nl.includes('pinch ran') ||
+          nl.includes('mound visit') || nl.includes('no play') ||
+          /^[a-z.,\'\- ]+ to (p|c|dh|dp|1b|2b|3b|ss|lf|cf|rf|ph|pr)/i.test(narrText);
+        var bLast = bname.split(',')[0].toLowerCase();
+        var starts = nl.startsWith(bname.toLowerCase()) || nl.startsWith(bLast);
+        if (skip || !starts) return;
+        if (/struck out/.test(nl))       action = /looking/.test(nl) ? 'KL' : 'K';
+        else if (/hit by pitch/.test(nl)) action = 'HBP';
+        else if (/walked/.test(nl))       action = 'BB';
+        else if (/homered/.test(nl))      action = 'HR';
+        else if (/tripled/.test(nl))      action = '3B';
+        else if (/doubled/.test(nl))      action = '2B';
+        else if (/singled/.test(nl))      action = '1B';
+        else if (/grounded into double play|lined into double play/.test(nl)) action = 'GDP';
+        else if (/infield fly/.test(nl))  action = 'IFF';
+        else if (/grounded out/.test(nl)) action = 'GO';
+        else if (/flied out|fouled out|lined out/.test(nl)) {
+          if (/sacrifice fly|sac fly|\bsf\b/.test(nl)) action = 'SF';
+          else action = 'FO';
+        }
+        else if (/popped up|popped out/.test(nl)) action = 'PO';
+        else if (/fielder.s choice/.test(nl))     action = 'FC';
+        else if (/reached.*(error|muffed)/.test(nl)) action = 'E';
+        else if (/sacrifice bunt|sac bunt|\bsac\b/.test(nl)) action = 'SH';
+        else return;
+      }
+
+      var sym = codeToSym(action, narrText);
+      if (!sym) return;
+      if (!map[bname]) map[bname] = {};
+      var existing = map[bname][innNum] || '';
+      map[bname][innNum] = existing ? existing + '/' + sym : sym;
+    }
+
+    // Walk <inning number="N"><batting vh="V|H"><play> — works for both formats
     xml.querySelectorAll('inning').forEach(function(inn) {
       var innNum = parseInt(inn.getAttribute('number') || '0');
-      var bat = inn.querySelector('batting[vh="' + vh + '"]');
-      if (!bat) return;
-      bat.querySelectorAll('play').forEach(function(play) {
-        var bname   = play.getAttribute('batter') || '';
-        if (!bname) return;
-        var narr = play.querySelector('narrative');
-        var narrText = narr ? (narr.getAttribute('text') || '') : '';
-        var bEl  = play.querySelector('batter');
-        var action = '';
-
-        if (bEl) {
-          var ab  = parseInt(bEl.getAttribute('ab')  || '0');
-          var av  = bEl.getAttribute('action')   || '';
-          var dv  = bEl.getAttribute('decision')  || '';
-          if (ab < 1 && !av && !dv) return;
-          action = dv || av;
-        } else {
-          if (!narrText) return;
-          var nl = narrText.toLowerCase();
-          var nm = nl.split(';')[0].trim();
-          var skip = nm.includes(' stole ') || nm.includes(' advanced ') ||
-            /\bscored\b/.test(nm) || nl.includes('picked off') ||
-            nl.includes('pinch hit') || nl.includes('pinch ran') ||
-            nl.includes('mound visit') || nl.includes('no play') ||
-            /^[a-z.,'\- ]+ to (p|c|dh|dp|1b|2b|3b|ss|lf|cf|rf|ph|pr)/i.test(narrText);
-          var bLast = bname.split(',')[0].toLowerCase();
-          var starts = nl.startsWith(bname.toLowerCase()) || nl.startsWith(bLast);
-          if (skip || !starts) return;
-          // Parse symbol from narrative
-          if (/struck out/.test(nl))       action = /looking/.test(nl) ? 'Kl' : 'K';
-          else if (/hit by pitch/.test(nl)) action = 'HBP';
-          else if (/walked/.test(nl))       action = 'BB';
-          else if (/homered/.test(nl))      action = 'HR';
-          else if (/tripled/.test(nl))      action = '3B';
-          else if (/doubled/.test(nl))      action = '2B';
-          else if (/singled/.test(nl))      action = '1B';
-          else if (/grounded into double play|lined into double play/.test(nl)) action = 'GDP';
-          else if (/infield fly/.test(nl))  action = 'IFF';
-          else if (/grounded out/.test(nl)) action = 'GO';
-          else if (/flied out|fouled out|lined out/.test(nl)) {
-            if (/sacrifice fly|sac fly|\bsf\b/.test(nl)) action = 'SF';
-            else action = 'FO';
-          }
-          else if (/popped up|popped out/.test(nl)) action = 'PO';
-          else if (/fielder.s choice/.test(nl))     action = 'FC';
-          else if (/reached.*(error|muffed)/.test(nl)) action = 'E';
-          else if (/sacrifice bunt|sac bunt/.test(nl)) action = 'SH';
-          else return;
-        }
-
-        // Convert Format A action codes to display symbols
-        var sym = codeToSym(action, narrText);
-        if (!sym) return;
-
-        if (!map[bname]) map[bname] = {};
-        // If same inning already has an entry, append (e.g. two PAs in one inning)
-        var existing = map[bname][innNum] || '';
-        map[bname][innNum] = existing ? existing + '/' + sym : sym;
+      if (!innNum) return;
+      inn.querySelectorAll('batting').forEach(function(bat) {
+        if (bat.getAttribute('vh') !== vh) return;
+        bat.querySelectorAll('play').forEach(function(play) {
+          var bname  = play.getAttribute('batter') || '';
+          var narr   = play.querySelector('narrative');
+          var narrT  = narr ? (narr.getAttribute('text') || '') : '';
+          var bEl    = play.querySelector('batter');
+          recordPlay(bname, innNum, narrT, bEl);
+        });
       });
     });
+
     return map;
   }
 
