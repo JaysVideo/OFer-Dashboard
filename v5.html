@@ -343,12 +343,20 @@
     letter-spacing:0px;
   }
   .ofer-val.emp{color:#888;font-size:14px;font-weight:400;font-style:italic;}
-  /* 0-0 walk flag — ESPN guide: never show 0-0, just say WALK */
-  .walk-flag{
-    display:inline-block;background:#f5a623;color:#000;
+  /* 0-0 walk — ESPN guide: never show 0-0. Highlight wraps the whole stat line */
+  .ofer-val.walk-highlight{
+    background:#f5a623;color:#000 !important;padding:2px 8px;
+  }
+  .ofer-val.walk-highlight .ofer-score,
+  .ofer-val.walk-highlight .ofer-detail{
+    color:#000 !important;
+  }
+  .walk-manual-tag{
+    display:inline-block;background:#000;color:#f5a623;
     font-family:'Futura Std','Oswald',sans-serif;
-    font-size:9px;font-weight:800;padding:1px 6px;letter-spacing:1px;
-    text-transform:uppercase;margin-left:8px;vertical-align:middle;
+    font-size:9px;font-weight:800;padding:2px 6px;letter-spacing:1px;
+    text-transform:uppercase;margin-left:0;vertical-align:middle;
+    border-left:2px solid #c47f00;
   }
 
   /* COPY button sits inside content area */
@@ -364,10 +372,10 @@
   .pcard:has(.manual-override.active){border-left-color:#f5a623 !important;}
 
   .batting-spot-lbl{
-    font-family:'Share Tech Mono',monospace;font-size:8px;
-    color:#444;letter-spacing:1px;text-transform:uppercase;
-    padding:0 4px;white-space:nowrap;align-self:center;flex-shrink:1;
-    overflow:hidden;text-overflow:ellipsis;max-width:90px;
+    font-family:'Futura Std','Oswald',sans-serif;font-size:12px;font-weight:700;
+    color:#555;letter-spacing:1px;text-transform:uppercase;
+    padding:0 6px;white-space:nowrap;align-self:center;flex-shrink:1;
+    overflow:hidden;text-overflow:ellipsis;max-width:110px;
   }
 
   .copy-btn{
@@ -2012,12 +2020,13 @@ function renderRoster(elId, side, players, curBtr, isThisBatting, animate=false)
       const parenIdx  = ofer.text.indexOf('(');
       const scorePart = parenIdx > -1 ? ofer.text.substring(0, parenIdx).trim() : ofer.text;
       const detailPart= parenIdx > -1 ? ofer.text.substring(parenIdx).toUpperCase() : '';
+      var walkCls = isZeroZeroWalk ? ' walk-highlight' : '';
       oferHTML =
-        '<span class="ofer-val ' + ofer.cls + '">' +
+        '<span class="ofer-val ' + ofer.cls + walkCls + '">' +
           '<span class="ofer-score">' + gameLabel + ': ' + scorePart + '</span>' +
           (detailPart ? ' <span class="ofer-detail">' + detailPart + '</span>' : '') +
         '</span>' +
-        (isZeroZeroWalk ? ' <span class="walk-flag">MANUAL ENTRY</span>' : '');
+        (isZeroZeroWalk ? '<span class="walk-manual-tag">MANUAL ENTRY</span>' : '');
     }
 
     // Season stat bar: AVG (with trend + streak) | HR | RBI | W/K
@@ -2666,7 +2675,8 @@ function updateTabs(visName, homName, battingSide) {
   if (visLbl) visLbl.textContent = visName || '—';
   if (homLbl) homLbl.textContent = homName || '—';
   // Always follow the batting team — switch every half inning automatically
-  if (battingSide) {
+  // But never override if user is on a special tab (scorecard, pbp)
+  if (battingSide && activeTab !== 'pbp' && activeTab !== 'card') {
     const newTab = battingSide === 'V' ? 'vis' : 'hom';
     if (activeTab !== newTab) {
       setTab(newTab);
@@ -3023,96 +3033,255 @@ function renderScorecard() {
   var wrap = document.getElementById('scorecardWrap');
   if (!wrap || !window._lastXml) return;
 
-  var xml = window._lastXml;
+  var xml     = window._lastXml;
   var visName = window._lastVisName || 'AWAY';
   var homName = window._lastHomName || 'HOME';
 
-  function buildTeamCard(players, teamName, side) {
-    if (!players || !players.length) return '<div style="padding:20px;color:#555;">No data</div>';
+  // ── Collect plate appearances per player per inning from play-by-play ──
+  // Map: { "V|spotNum" : { 1: 'HR', 2: 'K', ... } }
+  function buildPaMap(vh) {
+    var map = {};  // key = uni, value = { innNum: symbol }
+    xml.querySelectorAll('inning').forEach(function(inn) {
+      var innNum = parseInt(inn.getAttribute('number') || '0');
+      var bat = inn.querySelector('batting[vh="' + vh + '"]');
+      if (!bat) return;
+      bat.querySelectorAll('play').forEach(function(play) {
+        var bname   = play.getAttribute('batter') || '';
+        if (!bname) return;
+        var narr = play.querySelector('narrative');
+        var narrText = narr ? (narr.getAttribute('text') || '') : '';
+        var bEl  = play.querySelector('batter');
+        var action = '';
 
-    var color = side === 'vis' ? 'var(--vis-primary)' : 'var(--hom-primary)';
+        if (bEl) {
+          var ab  = parseInt(bEl.getAttribute('ab')  || '0');
+          var av  = bEl.getAttribute('action')   || '';
+          var dv  = bEl.getAttribute('decision')  || '';
+          if (ab < 1 && !av && !dv) return;
+          action = dv || av;
+        } else {
+          if (!narrText) return;
+          var nl = narrText.toLowerCase();
+          var nm = nl.split(';')[0].trim();
+          var skip = nm.includes(' stole ') || nm.includes(' advanced ') ||
+            /\bscored\b/.test(nm) || nl.includes('picked off') ||
+            nl.includes('pinch hit') || nl.includes('pinch ran') ||
+            nl.includes('mound visit') || nl.includes('no play') ||
+            /^[a-z.,'\- ]+ to (p|c|dh|dp|1b|2b|3b|ss|lf|cf|rf|ph|pr)/i.test(narrText);
+          var bLast = bname.split(',')[0].toLowerCase();
+          var starts = nl.startsWith(bname.toLowerCase()) || nl.startsWith(bLast);
+          if (skip || !starts) return;
+          // Parse symbol from narrative
+          if (/struck out/.test(nl))       action = /looking/.test(nl) ? 'Kl' : 'K';
+          else if (/hit by pitch/.test(nl)) action = 'HBP';
+          else if (/walked/.test(nl))       action = 'BB';
+          else if (/homered/.test(nl))      action = 'HR';
+          else if (/tripled/.test(nl))      action = '3B';
+          else if (/doubled/.test(nl))      action = '2B';
+          else if (/singled/.test(nl))      action = '1B';
+          else if (/grounded into double play|lined into double play/.test(nl)) action = 'GDP';
+          else if (/infield fly/.test(nl))  action = 'IFF';
+          else if (/grounded out/.test(nl)) action = 'GO';
+          else if (/flied out|fouled out|lined out/.test(nl)) {
+            if (/sacrifice fly|sac fly|\bsf\b/.test(nl)) action = 'SF';
+            else action = 'FO';
+          }
+          else if (/popped up|popped out/.test(nl)) action = 'PO';
+          else if (/fielder.s choice/.test(nl))     action = 'FC';
+          else if (/reached.*(error|muffed)/.test(nl)) action = 'E';
+          else if (/sacrifice bunt|sac bunt/.test(nl)) action = 'SH';
+          else return;
+        }
 
-    // Header
-    var html = '<div style="margin-bottom:16px;">';
-    html += '<div style="font-family:Oswald,sans-serif;font-size:14px;font-weight:800;' +
-            'letter-spacing:2px;text-transform:uppercase;color:' + color + ';padding:6px 0;' +
-            'border-bottom:2px solid ' + color + ';margin-bottom:6px;">' + teamName + '</div>';
+        // Convert Format A action codes to display symbols
+        var sym = codeToSym(action, narrText);
+        if (!sym) return;
 
-    // Table
-    html += '<table style="width:100%;border-collapse:collapse;font-family:monospace;font-size:11px;">';
+        if (!map[bname]) map[bname] = {};
+        // If same inning already has an entry, append (e.g. two PAs in one inning)
+        var existing = map[bname][innNum] || '';
+        map[bname][innNum] = existing ? existing + '/' + sym : sym;
+      });
+    });
+    return map;
+  }
 
-    // Header row
-    html += '<tr style="border-bottom:1px solid #333;">';
-    html += '<th style="text-align:left;padding:3px 6px;color:#555;width:20px;">#</th>';
-    html += '<th style="text-align:left;padding:3px 6px;color:#555;">PLAYER</th>';
-    html += '<th style="text-align:center;padding:3px 6px;color:#555;width:30px;">POS</th>';
-    html += '<th style="text-align:center;padding:3px 6px;color:#555;width:30px;">AB</th>';
-    html += '<th style="text-align:center;padding:3px 6px;color:#555;width:30px;">R</th>';
-    html += '<th style="text-align:center;padding:3px 6px;color:#555;width:30px;">H</th>';
-    html += '<th style="text-align:center;padding:3px 6px;color:#555;width:30px;">RBI</th>';
-    html += '<th style="text-align:center;padding:3px 6px;color:#555;width:30px;">BB</th>';
-    html += '<th style="text-align:center;padding:3px 6px;color:#555;width:30px;">SO</th>';
-    html += '<th style="text-align:left;padding:3px 6px;color:#555;">TODAY</th>';
-    html += '</tr>';
+  function codeToSym(code, narr) {
+    var c = (code || '').toUpperCase();
+    var n = (narr || '').toLowerCase();
+    if (c === 'K' || c === 'KL')            return /looking/.test(n) ? 'K̲' : 'K';
+    if (c === 'HBP')                         return 'HBP';
+    if (c === 'BB' || c === 'IBB')           return 'BB';
+    if (c === 'HR')                          return 'HR';
+    if (c.startsWith('3'))                   return '3B';
+    if (c.startsWith('2'))                   return '2B';
+    if (c === '1B' || c === 'S')             return '1B';
+    if (c === 'GDP' || c.includes('GDP'))    return 'GDP';
+    if (c === 'FC')                          return 'FC';
+    if (c === 'E' || c.startsWith('E'))      return 'E';
+    if (c === 'SF' || c === 'SF8' || c === 'SF7' || c === 'SF9') return 'SF';
+    if (c === 'SH' || c.startsWith('SH'))    return 'SH';
+    if (c === 'IFF')                         return 'IFF';
+    if (/^G/.test(c))                        return 'GO';
+    if (/^F/.test(c))                        return /sacrifice/i.test(n) ? 'SF' : 'FO';
+    if (/^P/.test(c))                        return 'PO';
+    return null;
+  }
 
-    // Player rows — lineup first, then accordion
-    var lineup  = players.filter(function(p){ return p.spot >= 1 && p.spot <= 9; });
+  function symColor(sym) {
+    if (!sym) return '#666';
+    var s = sym.toUpperCase();
+    if (s === 'HR')  return '#f5a623';
+    if (s === '3B' || s === '2B' || s === '1B') return '#00c97a';
+    if (s === 'K' || s === 'K̲') return '#ff4444';
+    if (s === 'GDP') return '#ff6666';
+    if (s === 'BB' || s === 'HBP' || s === 'IBB') return '#888';
+    if (s === 'SF' || s === 'SH') return '#aaa';
+    if (s === 'E')   return '#ff8c00';
+    if (s === 'FC')  return '#999';
+    return '#555';
+  }
+
+  function buildGrid(players, teamName, side, paMap) {
+    if (!players || !players.length) return '';
+
+    var color   = side === 'vis' ? 'var(--vis-primary)' : 'var(--hom-primary)';
+    var lineup  = players.filter(function(p){ return p.spot >= 1 && p.spot <= 9; })
+                         .sort(function(a,b){ return a.spot - b.spot; });
     var extras  = players.filter(function(p){
       return (p.spot === 0 || p.spot > 9) && (p.ab > 0 || p.bb > 0 || p.r > 0);
     });
     var allRows = lineup.concat(extras);
 
-    var totAb=0, totR=0, totH=0, totRbi=0, totBb=0, totSo=0;
-
+    // Max innings
+    var maxInn = 9;
     allRows.forEach(function(p) {
-      var ofer = buildOfer(p);
-      var statColor = ofer.cls === 'pos' ? '#00c97a' : ofer.cls === 'neg' ? '#666' : '#aaa';
-      var statText  = ofer.cls === 'emp' ? '—' : ofer.text;
-      var isExtra   = p.spot === 0 || p.spot > 9;
+      if (paMap[p.short] || paMap[p.name]) {
+        var pm = paMap[p.short] || paMap[p.name] || {};
+        Object.keys(pm).forEach(function(k){ if (parseInt(k) > maxInn) maxInn = parseInt(k); });
+      }
+    });
+    Object.keys(paMap).forEach(function(bname) {
+      Object.keys(paMap[bname]).forEach(function(k){ if (parseInt(k) > maxInn) maxInn = parseInt(k); });
+    });
 
-      totAb  += p.ab  || 0;
-      totR   += p.r   || 0;
-      totH   += p.h   || 0;
-      totRbi += p.rbi || 0;
-      totBb  += p.bb  || 0;
-      totSo  += p.so  || 0;
+    var inns = [];
+    for (var i = 1; i <= maxInn; i++) inns.push(i);
 
-      html += '<tr style="border-bottom:1px solid #1a1a1a;' + (isExtra ? 'opacity:0.7;' : '') + '">';
-      html += '<td style="padding:3px 6px;color:' + color + ';font-weight:700;">' + p.uni + '</td>';
-      html += '<td style="padding:3px 6px;color:#ccc;">' + p.name + '</td>';
-      html += '<td style="text-align:center;padding:3px 6px;color:#666;">' + (p.pos||'—') + '</td>';
-      html += '<td style="text-align:center;padding:3px 6px;color:#aaa;">' + (p.ab||0) + '</td>';
-      html += '<td style="text-align:center;padding:3px 6px;color:#aaa;">' + (p.r||0) + '</td>';
-      html += '<td style="text-align:center;padding:3px 6px;color:#aaa;font-weight:' + (p.h > 0 ? '700' : '400') + ';">' + (p.h||0) + '</td>';
-      html += '<td style="text-align:center;padding:3px 6px;color:#aaa;">' + (p.rbi||0) + '</td>';
-      html += '<td style="text-align:center;padding:3px 6px;color:#aaa;">' + (p.bb||0) + '</td>';
-      html += '<td style="text-align:center;padding:3px 6px;color:#aaa;">' + (p.so||0) + '</td>';
-      html += '<td style="padding:3px 6px;color:' + statColor + ';font-size:10px;">' + statText.toUpperCase() + '</td>';
+    // Totals
+    var totAb=0,totR=0,totH=0,totRbi=0,totBb=0,totSo=0;
+    allRows.forEach(function(p){
+      totAb+=p.ab||0; totR+=p.r||0; totH+=p.h||0;
+      totRbi+=p.rbi||0; totBb+=p.bb||0; totSo+=p.so||0;
+    });
+
+    var cellW = '32px';
+    var th = 'style="background:#111;border:1px solid #222;padding:3px 2px;text-align:center;' +
+             'font-size:9px;letter-spacing:1px;color:#555;font-family:monospace;white-space:nowrap;"';
+    var td = 'style="border:1px solid #1a1a1a;padding:2px;text-align:center;vertical-align:middle;' +
+             'min-width:' + cellW + ';height:32px;"';
+    var tdStat = 'style="border:1px solid #1a1a1a;padding:2px 4px;text-align:center;vertical-align:middle;' +
+                 'font-size:11px;font-family:monospace;color:#aaa;white-space:nowrap;"';
+    var tdName = 'style="border:1px solid #1a1a1a;padding:3px 8px;text-align:left;vertical-align:middle;' +
+                 'font-size:11px;font-family:monospace;white-space:nowrap;"';
+
+    var html = '<div style="margin-bottom:20px;">';
+    // Team header
+    html += '<div style="font-family:Oswald,sans-serif;font-size:13px;font-weight:800;' +
+            'letter-spacing:2px;text-transform:uppercase;color:' + color + ';' +
+            'padding:5px 8px;border-left:3px solid ' + color + ';margin-bottom:4px;">' +
+            teamName + '</div>';
+
+    html += '<table style="border-collapse:collapse;width:100%;">';
+
+    // Header row
+    html += '<thead><tr>';
+    html += '<th ' + th + ' style="background:#111;border:1px solid #222;padding:3px 4px;text-align:left;font-size:9px;color:#555;font-family:monospace;">LINEUP</th>';
+    html += '<th ' + th + '>POS</th>';
+    inns.forEach(function(n){ html += '<th ' + th + '>' + n + '</th>'; });
+    html += '<th ' + th + '>AB</th>';
+    html += '<th ' + th + '>R</th>';
+    html += '<th ' + th + '>H</th>';
+    html += '<th ' + th + '>RBI</th>';
+    html += '<th ' + th + '>BB</th>';
+    html += '<th ' + th + '>SO</th>';
+    html += '</tr></thead><tbody>';
+
+    allRows.forEach(function(p, idx) {
+      var isExtra = p.spot === 0 || p.spot > 9;
+      var rowBg   = idx % 2 === 0 ? 'background:#0d0d0d;' : 'background:#111;';
+      if (isExtra) rowBg = 'background:#0a0a0a;opacity:0.75;';
+
+      // Find this player's PA map — try multiple name formats
+      var pm = paMap[p.short] || paMap[p.name] ||
+               paMap[(p.name||'').split(',')[0]] || {};
+
+      html += '<tr style="' + rowBg + '">';
+      // Name cell
+      html += '<td ' + tdName + '>';
+      html += '<span style="color:' + color + ';font-weight:700;margin-right:6px;">' + p.uni + '</span>';
+      html += '<span style="color:#ccc;">' + p.name + '</span>';
+      if (isExtra) html += ' <span style="color:#444;font-size:9px;">(SUB)</span>';
+      html += '</td>';
+      // Pos
+      html += '<td ' + tdStat + ' style="border:1px solid #1a1a1a;padding:2px 4px;text-align:center;vertical-align:middle;font-size:10px;font-family:monospace;color:#666;">' + (p.pos||'—') + '</td>';
+
+      // Inning cells
+      inns.forEach(function(n) {
+        var sym = pm[n];
+        if (sym) {
+          var parts = sym.split('/');
+          var cellContent = parts.map(function(s) {
+            var sc = symColor(s);
+            var fw = (s === 'HR' || s === '3B' || s === '2B' || s === '1B') ? '700' : '600';
+            return '<span style="color:' + sc + ';font-weight:' + fw + ';font-size:10px;font-family:monospace;">' + s + '</span>';
+          }).join('<span style="color:#333;font-size:8px;">/</span>');
+          html += '<td ' + td + '>' + cellContent + '</td>';
+        } else {
+          html += '<td ' + td + '><span style="color:#1e1e1e;font-size:16px;">·</span></td>';
+        }
+      });
+
+      // Stat columns
+      var hBold = (p.h > 0) ? 'font-weight:700;color:#fff;' : '';
+      var rBold = (p.r > 0) ? 'color:#00c97a;' : '';
+      var rbiBold = (p.rbi > 0) ? 'color:#00c97a;' : '';
+      html += '<td ' + tdStat + '>' + (p.ab||0) + '</td>';
+      html += '<td style="border:1px solid #1a1a1a;padding:2px 4px;text-align:center;vertical-align:middle;font-size:11px;font-family:monospace;' + rBold + '">' + (p.r||0) + '</td>';
+      html += '<td style="border:1px solid #1a1a1a;padding:2px 4px;text-align:center;vertical-align:middle;font-size:11px;font-family:monospace;' + hBold + '">' + (p.h||0) + '</td>';
+      html += '<td style="border:1px solid #1a1a1a;padding:2px 4px;text-align:center;vertical-align:middle;font-size:11px;font-family:monospace;' + rbiBold + '">' + (p.rbi||0) + '</td>';
+      html += '<td ' + tdStat + '>' + (p.bb||0) + '</td>';
+      html += '<td ' + tdStat + '>' + (p.so||0) + '</td>';
       html += '</tr>';
     });
 
-    // Totals
-    html += '<tr style="border-top:2px solid #333;font-weight:700;">';
-    html += '<td colspan="3" style="padding:3px 6px;color:#888;">TOTALS</td>';
-    html += '<td style="text-align:center;padding:3px 6px;color:#fff;">' + totAb + '</td>';
-    html += '<td style="text-align:center;padding:3px 6px;color:#fff;">' + totR + '</td>';
-    html += '<td style="text-align:center;padding:3px 6px;color:#fff;">' + totH + '</td>';
-    html += '<td style="text-align:center;padding:3px 6px;color:#fff;">' + totRbi + '</td>';
-    html += '<td style="text-align:center;padding:3px 6px;color:#fff;">' + totBb + '</td>';
-    html += '<td style="text-align:center;padding:3px 6px;color:#fff;">' + totSo + '</td>';
-    html += '<td></td>';
+    // Totals row
+    html += '<tr style="border-top:2px solid #333;background:#0a0a0a;">';
+    html += '<td colspan="2" ' + tdName + ' style="border:1px solid #1a1a1a;padding:3px 8px;text-align:left;vertical-align:middle;font-size:10px;font-family:monospace;color:#555;font-weight:700;">TOTALS</td>';
+    inns.forEach(function(){ html += '<td ' + td + '></td>'; });
+    html += '<td ' + tdStat + ' style="border:1px solid #1a1a1a;padding:2px 4px;text-align:center;vertical-align:middle;font-size:11px;font-family:monospace;color:#fff;font-weight:700;">' + totAb + '</td>';
+    html += '<td ' + tdStat + ' style="border:1px solid #1a1a1a;padding:2px 4px;text-align:center;vertical-align:middle;font-size:11px;font-family:monospace;color:#fff;font-weight:700;">' + totR + '</td>';
+    html += '<td ' + tdStat + ' style="border:1px solid #1a1a1a;padding:2px 4px;text-align:center;vertical-align:middle;font-size:11px;font-family:monospace;color:#fff;font-weight:700;">' + totH + '</td>';
+    html += '<td ' + tdStat + ' style="border:1px solid #1a1a1a;padding:2px 4px;text-align:center;vertical-align:middle;font-size:11px;font-family:monospace;color:#fff;font-weight:700;">' + totRbi + '</td>';
+    html += '<td ' + tdStat + ' style="border:1px solid #1a1a1a;padding:2px 4px;text-align:center;vertical-align:middle;font-size:11px;font-family:monospace;color:#fff;font-weight:700;">' + totBb + '</td>';
+    html += '<td ' + tdStat + ' style="border:1px solid #1a1a1a;padding:2px 4px;text-align:center;vertical-align:middle;font-size:11px;font-family:monospace;color:#fff;font-weight:700;">' + totSo + '</td>';
     html += '</tr>';
 
-    html += '</table></div>';
+    html += '</tbody></table></div>';
     return html;
   }
 
-  var html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:4px;">';
-  html += '<div>' + buildTeamCard(window._lastVisPlayers, visName, 'vis') + '</div>';
-  html += '<div>' + buildTeamCard(window._lastHomPlayers, homName, 'hom') + '</div>';
+  var visPaMap = buildPaMap('V');
+  var homPaMap = buildPaMap('H');
+
+  var html = '<div style="padding:8px;overflow-x:auto;">';
+  html += buildGrid(window._lastVisPlayers, visName, 'vis', visPaMap);
+  html += '<div style="border-top:2px solid #222;margin:8px 0;"></div>';
+  html += buildGrid(window._lastHomPlayers, homName, 'hom', homPaMap);
   html += '</div>';
   wrap.innerHTML = html;
 }
+
 
 
 </script>
