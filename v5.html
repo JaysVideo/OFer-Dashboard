@@ -1508,7 +1508,10 @@ function parseGame(xmlText) {
         const outEl  = bEl ? bEl.getAttribute('out')    : (action === 'K' || action === 'G' || action === 'F' || action === 'P' || action === 'GDP' ? '1' : '0');
         const roeEl  = bEl ? bEl.getAttribute('rcherr') : (action === 'E' ? '1' : '0');
         const paRbi  = bEl ? parseInt(bEl.getAttribute('rbi') || '0') : 0;
-        lastPlayMap[bName.toLowerCase().trim()] = {
+        // Store under all name variants
+        nameKeys(bName).forEach(function(k) { lastPlayMap[k] = lastPlayMap[k] || {}; });
+        const _lpmKey = bName.toLowerCase().trim();
+        lastPlayMap[_lpmKey] = {
           action, decision, desc,
           isOut: outEl === '1',
           isRoe: roeEl === '1',
@@ -2195,8 +2198,10 @@ function buildOfer(p) {
     // RULE 5: Spell out single HR type; multiple = "X HR"
     if (hr > 0) {
       // Use per-PA rbi from lastPlayMap if available — avoids grand slam miscalc
-      const _key = (p.short || p.name || '').toLowerCase().trim();
-      const _pm  = window._lastPlayMap ? window._lastPlayMap[_key] : null;
+      const _keys = nameKeys(p.short || p.name || '');
+      const _pm  = window._lastPlayMap
+        ? (_keys.reduce((found, k) => found || window._lastPlayMap[k], null))
+        : null;
       const _paRbi = (_pm && _pm.action === 'HR' && _pm.paRbi != null) ? _pm.paRbi : null;
       if (_paRbi !== null) {
         // Direct per-PA rbi: 1=solo, 2=2-run, 3=3-run, 4=grand slam
@@ -2321,12 +2326,11 @@ function getAtBatResult(players, batterShort) {
   // Try to get a precise label from the play-by-play action code first
   let primary = null;
   const playMap = window._lastPlayMap || {};
-  const playerKey = (p.short || p.name || '').toLowerCase().trim();
-  // Try to find the player's last play by fuzzy key lookup
+  // Try all name key variants for robust lookup
+  const _lookupKeys = nameKeys(p.short || p.name || '');
   const playKeys = Object.keys(playMap);
-  const matchedKey = playKeys.find(k =>
-    k === playerKey ||
-    k.split(',')[0] === playerKey.split(',')[0]
+  const matchedKey = _lookupKeys.reduce((found, key) =>
+    found || playKeys.find(k => k === key) || null, null
   );
   if (matchedKey) {
     const play = playMap[matchedKey];
@@ -3041,6 +3045,24 @@ function renderPbp() {
 // ════════════════════════════════════════════════════════════════════════════
 // SCORECARD TAB — StatBroadcast style grid
 // ════════════════════════════════════════════════════════════════════════════
+// Generate all lookup key variants for a player name
+// Handles: 'Last, Init', 'Last,Init', 'Last,First', 'First Last', 'Single'
+function nameKeys(name) {
+  if (!name) return [];
+  var n = name.toLowerCase().trim();
+  var keys = [n];
+  // No space after comma: 'fitch, t' → 'fitch,t'
+  var nosp = n.replace(/,\s+/g, ',');
+  if (nosp !== n) keys.push(nosp);
+  // Space after comma: 'fitch,t' → 'fitch, t'
+  var sp = n.replace(/,([^\s])/g, ', $1');
+  if (sp !== n) keys.push(sp);
+  // Last name only (first segment before comma or first word)
+  var last = n.indexOf(',') > -1 ? n.split(',')[0].trim() : n.split(' ')[0];
+  if (last && last !== n && last.length > 1) keys.push(last);
+  return keys;
+}
+
 function renderScorecard() {
   var wrap = document.getElementById('scorecardWrap');
   if (!wrap || !window._lastXml) return;
@@ -3101,10 +3123,13 @@ function renderScorecard() {
 
       var sym = codeToSym(action, narrText);
       if (!sym) return;
-      var key = bname.toLowerCase().trim();
-      if (!map[key]) map[key] = {};
-      var existing = map[key][innNum] || '';
-      map[key][innNum] = existing ? existing + '/' + sym : sym;
+      // Store under ALL name variants so lookup always finds a match
+      var keys = nameKeys(bname);
+      keys.forEach(function(key) {
+        if (!map[key]) map[key] = {};
+        var existing = map[key][innNum] || '';
+        map[key][innNum] = existing ? existing + '/' + sym : sym;
+      });
     }
 
     // Walk every <play> element and find its inning number by walking up the DOM.
@@ -3237,9 +3262,12 @@ function renderScorecard() {
       var rowBg   = idx % 2 === 0 ? 'background:#0d0d0d;' : 'background:#111;';
       if (isExtra) rowBg = 'background:#0a0a0a;opacity:0.75;';
 
-      // Find this player's PA map — try multiple name formats
-      var pm = paMap[p.short] || paMap[p.name] ||
-               paMap[(p.name||'').split(',')[0]] || {};
+      // Find PA map using all name key variants
+      var pm = {};
+      var lookupKeys = nameKeys(p.short).concat(nameKeys(p.name));
+      for (var li = 0; li < lookupKeys.length; li++) {
+        if (paMap[lookupKeys[li]]) { pm = paMap[lookupKeys[li]]; break; }
+      }
 
       html += '<tr style="' + rowBg + '">';
       // Name cell
