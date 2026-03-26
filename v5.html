@@ -1444,20 +1444,22 @@ function parseGame(xmlText) {
         // Format B: narrative-only — parse from text
         // Skip runner/substitution plays (no real PA)
         const narrLower = narrText.toLowerCase();
-        // Skip runner advances, stolen bases, scores — these are mid-PA events
-        // NOTE: do NOT filter on field positions (" to ss", " to lf" etc) because
-        // those appear in legitimate play results like "popped up to ss", "flied out to lf"
+        // Strip runner info after semicolon BEFORE checking skip conditions.
+        const narrMain = narrLower.split(';')[0].trim();
         const isRunnerPlay = (
-          narrLower.includes(' stole ') ||
-          narrLower.includes(' advanced ') ||
-          /\bscored\b/.test(narrLower) ||
+          narrMain.includes(' stole ') ||
+          narrMain.includes(' advanced ') ||
+          /\bscored\b/.test(narrMain) ||
           narrLower.includes('picked off') ||
           narrLower.includes('no play') ||
+          narrLower.includes('mound visit') ||
+          narrLower.includes('offensive timeout') ||
+          narrLower.includes('defensive timeout') ||
           narrLower.includes(' to p for ') ||
-          narrLower.includes('pinch hit for') ||
-          narrLower.includes('pinch ran for') ||
-          // Defensive/pitching sub: "Name to position" without starting with batter name
-          /^[a-z]+ to (p|c|1b|2b|3b|ss|lf|cf|rf|ph|pr)(\s+for\s+[a-z]+)?\s*\.?\s*$/i.test(narrText)
+          narrLower.includes('pinch hit') ||
+          narrLower.includes('pinch ran') ||
+          // Sub to DH, PH, PR positions
+          /^[a-z.,'\- ]+ to (p|c|dh|dp|1b|2b|3b|ss|lf|cf|rf|ph|pr)(\s+for\s+[a-z.,'\- ]+)?\s*\.?\s*$/i.test(narrText)
         );
         // Skip if narrative doesn't start with the batter's name
         const bLast = bName.split(',')[0].toLowerCase();
@@ -1695,64 +1697,100 @@ function parsePlayers(teamEl) {
 // ════════════════════════════════════════════════════════════════════════════
 function parseNarrativeAction(narrative, batterName) {
   if (!narrative) return null;
-  // Strip batter name from start
   var text = narrative.trim();
-  var nameVariants = [batterName, (batterName||'').split(',').reverse().join(' ').trim()];
+  // Strip batter name variants from start
+  var bLast = batterName.indexOf(',') > -1
+    ? batterName.split(',')[0].trim()
+    : (batterName.indexOf(' ') > -1 ? batterName.split(' ').pop() : batterName);
+  var nameVariants = [batterName, bLast];
   for (var nv of nameVariants) {
     if (nv && text.toLowerCase().startsWith(nv.toLowerCase())) {
-      text = text.substring(nv.length).trim();
-      break;
+      text = text.substring(nv.length).trim(); break;
     }
   }
-  // Strip count and pitch sequence in parens at end
+  // Strip count/pitch sequence in parens, RBI/runner info after semicolon, trailing punct
   text = text.replace(/\s*\([^)]*\)\s*[;.]?\s*$/, '').trim();
-  // Strip RBI/runner info after semicolon
   text = text.replace(/\s*;.*$/, '').trim();
-  // Strip trailing punctuation
   text = text.replace(/[.,;]+$/, '').trim();
   var t = text.toLowerCase();
 
-  // Map to action codes
-  if (/struck out/.test(t))                        return { action:'K',   decision:'K',   desc:'' };
-  if (/hit by pitch/.test(t))                      return { action:'HBP', decision:'HBP', desc:'' };
-  if (/walked/.test(t))                            return { action:'BB',  decision:'BB',  desc:'' };
+  // ── Strikeouts ────────────────────────────────────────────────────────────
+  if (/struck out/.test(t))                  return { action:'K',   decision:'K',   desc:'' };
+
+  // ── Reached base ──────────────────────────────────────────────────────────
+  if (/hit by pitch/.test(t))                return { action:'HBP', decision:'HBP', desc:'' };
+  if (/was intentionally walked/.test(t))    return { action:'IBB', decision:'IBB', desc:'' };
+  if (/intentional(ly)? walk/.test(t))       return { action:'IBB', decision:'IBB', desc:'' };
+  if (/walked/.test(t))                      return { action:'BB',  decision:'BB',  desc:'' };
+  if (/reached on a fielder.s choice/.test(t)) return { action:'FC', decision:'FC', desc:'' };
+  // "reached first on a fielding/throwing error" and variants
+  // All "reached ... error/muffed" variants
+  if (/reached.*(error|fielding error|throwing error|muffed)/.test(t)) return { action:'E', decision:'E', desc:'' };
+  // Batter's interference = out
+  if (/batter.s interference/.test(t)) return { action:'K', decision:'K', desc:'' };
+
+  // ── Hits ──────────────────────────────────────────────────────────────────
   if (/homered/.test(t)) {
     var loc = t.replace(/.*homered\s*(to\s*)?/,'').replace(/,.*$/,'').trim();
     return { action:'HR', decision:'HR', desc: loc };
   }
   if (/tripled/.test(t)) {
-    var loc2 = t.replace(/.*tripled\s*(down|to|through|up|into)?\s*/,'').replace(/,.*$/,'').trim();
-    return { action:'3B', decision:'3B', desc: loc2 };
+    var loc = t.replace(/.*tripled\s*(down|to|through|up|into|,)?\s*/,'').replace(/,.*$/,'').trim();
+    return { action:'3B', decision:'3B', desc: loc };
   }
   if (/doubled/.test(t)) {
-    var loc3 = t.replace(/.*doubled\s*(down|to|through|up|into)?\s*/,'').replace(/,.*$/,'').trim();
-    return { action:'2B', decision:'2B', desc: loc3 };
+    // "doubled, out at third" = batter doubled but was thrown out stretching — still a 2B hit
+    var loc = t.replace(/.*doubled\s*(down|to|through|up|into|,)?\s*/,'').replace(/,.*$/,'').trim();
+    return { action:'2B', decision:'2B', desc: loc };
   }
   if (/singled/.test(t)) {
-    var loc4 = t.replace(/.*singled\s*(to|through|up|down|into)?\s*/,'').replace(/,.*$/,'').trim();
-    return { action:'1B', decision:'1B', desc: loc4 };
+    var loc = t.replace(/.*singled\s*(to|through|up|down|into|,)?\s*/,'').replace(/,.*$/,'').trim();
+    return { action:'1B', decision:'1B', desc: loc };
   }
-  if (/grounded into double play/.test(t))         return { action:'GDP', decision:'GDP', desc:'' };
+  // Bunt single: "singled, bunt"
+  if (/bunt/.test(t) && /(single|hit)/.test(t)) return { action:'1B', decision:'1B', desc:'bunt' };
+
+  // ── Outs ──────────────────────────────────────────────────────────────────
+  if (/grounded into double play/.test(t))   return { action:'GDP', decision:'GDP', desc:'' };
+  if (/lined into double play/.test(t))       return { action:'GDP', decision:'GDP', desc:'' };
+  if (/infield fly/.test(t)) {
+    var loc = t.replace(/infield fly\s*(to\s*)?/,'').replace(/,.*$/,'').trim();
+    return { action:'P',  decision:'P',  desc: loc ? 'to ' + loc : '' };
+  }
   if (/grounded out/.test(t)) {
-    var loc5 = t.replace(/grounded out (to )?/,'').replace(/,.*$/,'').trim();
-    return { action:'G',  decision:'G',  desc: 'to ' + loc5 };
+    var loc = t.replace(/grounded out\s*(to\s*)?/,'').replace(/,.*$/,'').trim();
+    return { action:'G',  decision:'G',  desc: loc ? 'to ' + loc : '' };
   }
   if (/flied out/.test(t)) {
-    var loc6 = t.replace(/flied out (to )?/,'').replace(/,.*$/,'').trim();
-    return { action:'F',  decision:'F',  desc: 'to ' + loc6 };
+    // Check for sacrifice fly embedded in flyout narrative
+    if (/sacrifice fly|\bsf\b|\bsac\b/.test(t)) return { action:'SF', decision:'SF', desc:'' };
+    var loc = t.replace(/flied out\s*(to\s*)?/,'').replace(/,.*$/,'').trim();
+    return { action:'F',  decision:'F',  desc: loc ? 'to ' + loc : '' };
   }
   if (/lined out/.test(t)) {
-    var loc7 = t.replace(/lined out (to )?/,'').replace(/,.*$/,'').trim();
-    return { action:'F',  decision:'F',  desc: 'to ' + loc7 };
+    var loc = t.replace(/lined out\s*(to\s*)?/,'').replace(/,.*$/,'').trim();
+    return { action:'F',  decision:'F',  desc: loc ? 'to ' + loc : '' };
+  }
+  if (/fouled out/.test(t)) {
+    var loc = t.replace(/fouled out\s*(to\s*)?/,'').replace(/,.*$/,'').trim();
+    return { action:'F',  decision:'F',  desc: loc ? 'to ' + loc : '' };
   }
   if (/popped up/.test(t)) {
-    var loc8 = t.replace(/popped up (to )?/,'').replace(/,.*$/,'').trim();
-    return { action:'P',  decision:'P',  desc: 'to ' + loc8 };
+    var loc = t.replace(/popped up\s*(to\s*)?/,'').replace(/,.*$/,'').trim();
+    return { action:'P',  decision:'P',  desc: loc ? 'to ' + loc : '' };
   }
-  if (/reached on a fielder.s choice/.test(t))    return { action:'FC',  decision:'FC',  desc:'' };
-  if (/reached on a.*error/.test(t))              return { action:'E',   decision:'E',   desc:'' };
-  if (/sacrifice fly/.test(t) || /sac fly/.test(t)) return { action:'SF', decision:'SF', desc:'' };
-  if (/sacrifice bunt/.test(t) || /sac bunt/.test(t)) return { action:'SH', decision:'SH', desc:'' };
+  if (/popped out/.test(t)) {
+    var loc = t.replace(/popped out\s*(to\s*)?/,'').replace(/,.*$/,'').trim();
+    return { action:'P',  decision:'P',  desc: loc ? 'to ' + loc : '' };
+  }
+  if (/out at (first|second|third|home)/.test(t)) return { action:'FC', decision:'FC', desc:'' };
+
+  // ── Sacrifices ────────────────────────────────────────────────────────────
+  if (/sacrifice fly/.test(t) || (/\bsf\b/.test(t) && /rbi/.test(t)))
+    return { action:'SF', decision:'SF', desc:'' };
+  if (/sacrifice bunt/.test(t) || (/sac/.test(t) && /bunt/.test(t)) ||
+      (/bunt/.test(t) && /out/.test(t)))
+    return { action:'SH', decision:'SH', desc:'' };
 
   return null; // couldn't parse
 }
