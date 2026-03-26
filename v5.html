@@ -343,6 +343,13 @@
     letter-spacing:0px;
   }
   .ofer-val.emp{color:#888;font-size:14px;font-weight:400;font-style:italic;}
+  /* 0-0 walk flag — ESPN guide: never show 0-0, just say WALK */
+  .walk-flag{
+    display:inline-block;background:#f5a623;color:#000;
+    font-family:'Futura Std','Oswald',sans-serif;
+    font-size:9px;font-weight:800;padding:1px 6px;letter-spacing:1px;
+    text-transform:uppercase;margin-left:8px;vertical-align:middle;
+  }
 
   /* COPY button sits inside content area */
   /* Manual override input */
@@ -780,6 +787,8 @@
   <button class="team-tab both active" onclick="setTab('both', true)">BOTH TEAMS</button>
   <button class="team-tab vis" id="tabVis" onclick="setTab('vis', true)">AWAY</button>
   <button class="team-tab hom" id="tabHom" onclick="setTab('hom', true)">HOME</button>
+  <button class="team-tab" id="tabPbp" onclick="setTab('pbp', true)">PLAY-BY-PLAY</button>
+  <button class="team-tab" id="tabCard" onclick="setTab('card', true)">SCORECARD</button>
 </div>
 
 <div class="score-bar" id="scoreBar">
@@ -853,6 +862,18 @@
       </button>
       <div class="accordion-body" id="homRosterAccBody"></div>
     </div>
+  </div>
+  <!-- Play-by-play panel -->
+  <div class="t-panel pbp-panel" id="pbpPanel" style="display:none;grid-column:1/-1;">
+    <div class="t-hdr"><span class="t-hdr-name">PLAY-BY-PLAY</span></div>
+    <div id="pbpList" style="padding:8px;font-family:'Share Tech Mono',monospace;font-size:11px;
+         line-height:2;overflow-y:auto;max-height:calc(100vh - 220px);"></div>
+  </div>
+
+  <!-- Scorecard panel -->
+  <div class="t-panel card-panel" id="cardPanel" style="display:none;grid-column:1/-1;overflow-x:auto;">
+    <div class="t-hdr"><span class="t-hdr-name">SCORECARD</span></div>
+    <div id="scorecardWrap" style="padding:8px;min-width:700px;"></div>
   </div>
 </div>
 
@@ -1522,13 +1543,11 @@ function parseGame(xmlText) {
     const pcTxt = document.getElementById('pitchCountTxt');
     if (pcTxt) pcTxt.textContent = pitches ? 'PITCHES: ' + pitches : '';
 
-    // End of game recap
-    if (complete && !recapGenerated) {
-      const visScore = visLS?.getAttribute('runs') ?? '0';
-      const homScore = homLS?.getAttribute('runs') ?? '0';
-      generateGameRecap(visName, homName, visScore, homScore, visPlayers, homPlayers);
-    }    window._lastVisPlayers = visPlayers;
+    window._lastVisPlayers = visPlayers;
     window._lastHomPlayers = homPlayers;
+    window._lastXml        = xml;
+    window._lastVisName    = visName;
+    window._lastHomName    = homName;
 
     // ── Batter change detection: show result flash + escalator animation ──
     const battingSidePlayers = topBot === 'V' ? visPlayers : homPlayers;
@@ -1582,6 +1601,10 @@ function parseGame(xmlText) {
 
     // Auto-write output XML on every refresh if file handle is set
     if (outputFileHandle) writeOutputFile();
+
+    // Re-render active special tab
+    if (activeTab === 'pbp')  renderPbp();
+    if (activeTab === 'card') renderScorecard();
 
     // Scoring strip
     updateScoringStrip(xml, visName, homName, parseInt(inning));
@@ -1978,6 +2001,9 @@ function renderRoster(elId, side, players, curBtr, isThisBatting, animate=false)
       ? '<div class="pcard-hdr-right"><span class="queue-lbl' + (isCur?' queue-now':'') + '">' + qLabel + '</span></div>'
       : '';
 
+    // Detect 0-0 with walks — ESPN rule: never show 0-0, just WALK
+    const isZeroZeroWalk = p.ab === 0 && p.bb > 0 && ofer.cls !== 'emp';
+
     // Split ofer text into bold score + italic detail
     let oferHTML = '';
     if (ofer.cls === 'emp') {
@@ -1990,7 +2016,8 @@ function renderRoster(elId, side, players, curBtr, isThisBatting, animate=false)
         '<span class="ofer-val ' + ofer.cls + '">' +
           '<span class="ofer-score">' + gameLabel + ': ' + scorePart + '</span>' +
           (detailPart ? ' <span class="ofer-detail">' + detailPart + '</span>' : '') +
-        '</span>';
+        '</span>' +
+        (isZeroZeroWalk ? ' <span class="walk-flag">MANUAL ENTRY</span>' : '');
     }
 
     // Season stat bar: AVG (with trend + streak) | HR | RBI | W/K
@@ -2576,27 +2603,55 @@ let userPickedTab = false; // true once user manually taps a tab
 function setTab(tab, manual=false) {
   if (manual) userPickedTab = true;
   activeTab = tab;
-  const visPanel = document.getElementById('visPanel');
-  const homPanel = document.getElementById('homPanel');
-  const main     = document.querySelector('.main');
+  const visPanel  = document.getElementById('visPanel');
+  const homPanel  = document.getElementById('homPanel');
+  const pbpPanel  = document.getElementById('pbpPanel');
+  const cardPanel = document.getElementById('cardPanel');
+  const main      = document.querySelector('.main');
 
+  // Hide all special panels first
+  if (pbpPanel)  pbpPanel.style.display  = 'none';
+  if (cardPanel) cardPanel.style.display = 'none';
+
+  // Active tab styling — clear all then set active
   document.querySelectorAll('.team-tab').forEach(b => b.classList.remove('active'));
-  const sel = tab === 'both' ? '.team-tab.both' : '.team-tab.' + tab;
-  document.querySelector(sel).classList.add('active');
 
-  if (tab === 'vis') {
-    visPanel.style.display = 'block';
-    homPanel.style.display = 'none';
-    main.style.gridTemplateColumns = '1fr';
+  if (tab === 'pbp') {
+    if (visPanel)  visPanel.style.display  = 'none';
+    if (homPanel)  homPanel.style.display  = 'none';
+    if (pbpPanel)  pbpPanel.style.display  = '';
+    if (main) main.style.gridTemplateColumns = '1fr';
+    const el = document.getElementById('tabPbp');
+    if (el) el.classList.add('active');
+    renderPbp();
+  } else if (tab === 'card') {
+    if (visPanel)  visPanel.style.display  = 'none';
+    if (homPanel)  homPanel.style.display  = 'none';
+    if (cardPanel) cardPanel.style.display = '';
+    if (main) main.style.gridTemplateColumns = '1fr';
+    const el = document.getElementById('tabCard');
+    if (el) el.classList.add('active');
+    renderScorecard();
+  } else if (tab === 'vis') {
+    if (visPanel) visPanel.style.display = 'block';
+    if (homPanel) homPanel.style.display = 'none';
+    if (main) main.style.gridTemplateColumns = '1fr';
+    const el = document.getElementById('tabVis');
+    if (el) el.classList.add('active');
   } else if (tab === 'hom') {
-    visPanel.style.display = 'none';
-    homPanel.style.display = 'block';
-    main.style.gridTemplateColumns = '1fr';
+    if (visPanel) visPanel.style.display = 'none';
+    if (homPanel) homPanel.style.display = 'block';
+    if (main) main.style.gridTemplateColumns = '1fr';
+    const el = document.getElementById('tabHom');
+    if (el) el.classList.add('active');
   } else {
-    visPanel.style.display = 'block';
-    homPanel.style.display = 'block';
-    main.style.gridTemplateColumns = window.innerWidth > 768 ? '1fr 1fr' : '1fr';
+    // both
+    if (visPanel) visPanel.style.display = 'block';
+    if (homPanel) homPanel.style.display = 'block';
+    if (main) main.style.gridTemplateColumns = window.innerWidth > 768 ? '1fr 1fr' : '1fr';
+    document.querySelector('.team-tab.both')?.classList.add('active');
   }
+
 }
 
 function updateTabs(visName, homName, battingSide) {
@@ -2766,56 +2821,9 @@ function updateBasesDiamond(status) {
 // ════════════════════════════════════════════════════════════════════════════
 // GAME RECAP (Claude API)
 // ════════════════════════════════════════════════════════════════════════════
-var recapGenerated = false;
 
-async function generateGameRecap(visName, homName, visScore, homScore, visPlayers, homPlayers) {
-  if (recapGenerated) return;
-  recapGenerated = true;
-  showRecapModal('Generating recap...');
-  const winner   = parseInt(visScore) > parseInt(homScore) ? visName : homName;
-  const loser    = parseInt(visScore) > parseInt(homScore) ? homName : visName;
-  const winScore = Math.max(parseInt(visScore), parseInt(homScore));
-  const loseScore= Math.min(parseInt(visScore), parseInt(homScore));
-  const fmt = function(p) {
-    const o = buildOfer(p);
-    return p.name + ': ' + o.text + (p.savg ? ' (.'+Math.round(parseFloat(p.savg)*1000)+' BA)' : '');
-  };
-  const visLines = visPlayers.filter(function(p){return p.ab>0||p.bb>0;}).map(fmt).join('; ');
-  const homLines = homPlayers.filter(function(p){return p.ab>0||p.bb>0;}).map(fmt).join('; ');
-  const prompt = 'Write a concise collegiate athletics game recap (150-200 words) in official athletic department style.\n\nGame: ' + visName + ' at ' + homName + '\nFinal: ' + winner + ' ' + winScore + ', ' + loser + ' ' + loseScore + '\n' + visName + ': ' + visLines + '\n' + homName + ': ' + homLines + '\n\nRequirements: Lead with final score. Highlight 2-3 standout performers with specific stats. Professional third-person tone. Only use stats provided. Do not use the word showcased.';
-  try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 400, messages: [{ role: 'user', content: prompt }] })
-    });
-    const data = await resp.json();
-    showRecapModal(data.content && data.content[0] ? data.content[0].text : 'Could not generate recap.');
-  } catch(err) {
-    showRecapModal('Recap generation failed. Check internet connection.');
-  }
-}
 
-function showRecapModal(text) {
-  var modal = document.getElementById('recapModal');
-  if (!modal) {
-    modal = document.createElement('div');
-    modal.id = 'recapModal';
-    modal.style.cssText = 'position:fixed;inset:0;z-index:1100;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.85);backdrop-filter:blur(6px);';
-    // (modal built via DOM - see above)
-    document.body.appendChild(modal);
-  } else {
-    var t = document.getElementById('recapText');
-    if (t) t.textContent = text;
-  }
-}
 
-function copyRecap() {
-  var text = document.getElementById('recapText') ? document.getElementById('recapText').textContent : '';
-  navigator.clipboard.writeText(text).catch(function(){});
-  setStat('ok', 'RECAP COPIED');
-  setTimeout(function(){ setStat('ok', 'UPDATED ' + new Date().toLocaleTimeString()); }, 2000);
-}
 
 
 
@@ -2941,6 +2949,170 @@ async function autoBackupOutput(inning, topBot) {
 // V5 — VERSION
 // ════════════════════════════════════════════════════════════════════════════
 // ESPN-0Fers V5
+
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// PLAY-BY-PLAY TAB
+// ════════════════════════════════════════════════════════════════════════════
+function renderPbp() {
+  var el = document.getElementById('pbpList');
+  if (!el || !window._lastXml) return;
+
+  var xml = window._lastXml;
+  var html = '';
+  var currentInning = '';
+
+  xml.querySelectorAll('inning').forEach(function(inn) {
+    var innNum = inn.getAttribute('number') || '?';
+
+    inn.querySelectorAll('batting').forEach(function(bat) {
+      var vh   = bat.getAttribute('vh');
+      var team = vh === 'V' ? window._lastVisName : window._lastHomName;
+      var half = vh === 'V' ? '▲ TOP' : '▼ BOT';
+      var halfKey = half + ' ' + innNum;
+
+      if (halfKey !== currentInning) {
+        currentInning = halfKey;
+        html += '<div style="margin-top:10px;padding:3px 8px;background:var(--surface2);' +
+                'font-family:Oswald,sans-serif;font-size:11px;font-weight:700;' +
+                'letter-spacing:2px;color:#888;text-transform:uppercase;">' +
+                half + ' ' + ordinalInning(parseInt(innNum)) + ' — ' + (team||'').toUpperCase() + ' BATTING</div>';
+      }
+
+      bat.querySelectorAll('play').forEach(function(play) {
+        var narr = play.querySelector('narrative');
+        if (!narr) return;
+        var text = narr.getAttribute('text') || '';
+        if (!text) return;
+
+        // Color code by result type
+        var textLow = text.toLowerCase();
+        var color = '#888';
+        if (/homer|home run/.test(textLow))     color = '#f5a623';
+        else if (/tripled|doubled|singled/.test(textLow)) color = '#00c97a';
+        else if (/struck out|strikeout/.test(textLow))    color = '#ff4444';
+        else if (/hit by pitch|walked/.test(textLow))     color = '#aaa';
+        else if (/scored|rbi/.test(textLow))              color = '#00e676';
+        else if (/error/.test(textLow))                   color = '#ff8c00';
+        else if (/double play/.test(textLow))             color = '#ff4444';
+
+        html += '<div style="padding:2px 10px;border-bottom:1px solid #111;color:' + color + ';">' +
+                text + '</div>';
+      });
+
+      // Inning summary
+      var sum = bat.querySelector('innsummary');
+      if (sum) {
+        var r = sum.getAttribute('r') || '0';
+        var h = sum.getAttribute('h') || '0';
+        var e = sum.getAttribute('e') || '0';
+        html += '<div style="padding:2px 10px 6px 10px;font-weight:700;color:#555;font-size:10px;">' +
+                r + ' R, ' + h + ' H, ' + e + ' E</div>';
+      }
+    });
+  });
+
+  el.innerHTML = html || '<div style="padding:20px;color:#555;">No play-by-play data available.</div>';
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// SCORECARD TAB — StatBroadcast style grid
+// ════════════════════════════════════════════════════════════════════════════
+function renderScorecard() {
+  var wrap = document.getElementById('scorecardWrap');
+  if (!wrap || !window._lastXml) return;
+
+  var xml = window._lastXml;
+  var visName = window._lastVisName || 'AWAY';
+  var homName = window._lastHomName || 'HOME';
+
+  function buildTeamCard(players, teamName, side) {
+    if (!players || !players.length) return '<div style="padding:20px;color:#555;">No data</div>';
+
+    var color = side === 'vis' ? 'var(--vis-primary)' : 'var(--hom-primary)';
+
+    // Header
+    var html = '<div style="margin-bottom:16px;">';
+    html += '<div style="font-family:Oswald,sans-serif;font-size:14px;font-weight:800;' +
+            'letter-spacing:2px;text-transform:uppercase;color:' + color + ';padding:6px 0;' +
+            'border-bottom:2px solid ' + color + ';margin-bottom:6px;">' + teamName + '</div>';
+
+    // Table
+    html += '<table style="width:100%;border-collapse:collapse;font-family:monospace;font-size:11px;">';
+
+    // Header row
+    html += '<tr style="border-bottom:1px solid #333;">';
+    html += '<th style="text-align:left;padding:3px 6px;color:#555;width:20px;">#</th>';
+    html += '<th style="text-align:left;padding:3px 6px;color:#555;">PLAYER</th>';
+    html += '<th style="text-align:center;padding:3px 6px;color:#555;width:30px;">POS</th>';
+    html += '<th style="text-align:center;padding:3px 6px;color:#555;width:30px;">AB</th>';
+    html += '<th style="text-align:center;padding:3px 6px;color:#555;width:30px;">R</th>';
+    html += '<th style="text-align:center;padding:3px 6px;color:#555;width:30px;">H</th>';
+    html += '<th style="text-align:center;padding:3px 6px;color:#555;width:30px;">RBI</th>';
+    html += '<th style="text-align:center;padding:3px 6px;color:#555;width:30px;">BB</th>';
+    html += '<th style="text-align:center;padding:3px 6px;color:#555;width:30px;">SO</th>';
+    html += '<th style="text-align:left;padding:3px 6px;color:#555;">TODAY</th>';
+    html += '</tr>';
+
+    // Player rows — lineup first, then accordion
+    var lineup  = players.filter(function(p){ return p.spot >= 1 && p.spot <= 9; });
+    var extras  = players.filter(function(p){
+      return (p.spot === 0 || p.spot > 9) && (p.ab > 0 || p.bb > 0 || p.r > 0);
+    });
+    var allRows = lineup.concat(extras);
+
+    var totAb=0, totR=0, totH=0, totRbi=0, totBb=0, totSo=0;
+
+    allRows.forEach(function(p) {
+      var ofer = buildOfer(p);
+      var statColor = ofer.cls === 'pos' ? '#00c97a' : ofer.cls === 'neg' ? '#666' : '#aaa';
+      var statText  = ofer.cls === 'emp' ? '—' : ofer.text;
+      var isExtra   = p.spot === 0 || p.spot > 9;
+
+      totAb  += p.ab  || 0;
+      totR   += p.r   || 0;
+      totH   += p.h   || 0;
+      totRbi += p.rbi || 0;
+      totBb  += p.bb  || 0;
+      totSo  += p.so  || 0;
+
+      html += '<tr style="border-bottom:1px solid #1a1a1a;' + (isExtra ? 'opacity:0.7;' : '') + '">';
+      html += '<td style="padding:3px 6px;color:' + color + ';font-weight:700;">' + p.uni + '</td>';
+      html += '<td style="padding:3px 6px;color:#ccc;">' + p.name + '</td>';
+      html += '<td style="text-align:center;padding:3px 6px;color:#666;">' + (p.pos||'—') + '</td>';
+      html += '<td style="text-align:center;padding:3px 6px;color:#aaa;">' + (p.ab||0) + '</td>';
+      html += '<td style="text-align:center;padding:3px 6px;color:#aaa;">' + (p.r||0) + '</td>';
+      html += '<td style="text-align:center;padding:3px 6px;color:#aaa;font-weight:' + (p.h > 0 ? '700' : '400') + ';">' + (p.h||0) + '</td>';
+      html += '<td style="text-align:center;padding:3px 6px;color:#aaa;">' + (p.rbi||0) + '</td>';
+      html += '<td style="text-align:center;padding:3px 6px;color:#aaa;">' + (p.bb||0) + '</td>';
+      html += '<td style="text-align:center;padding:3px 6px;color:#aaa;">' + (p.so||0) + '</td>';
+      html += '<td style="padding:3px 6px;color:' + statColor + ';font-size:10px;">' + statText.toUpperCase() + '</td>';
+      html += '</tr>';
+    });
+
+    // Totals
+    html += '<tr style="border-top:2px solid #333;font-weight:700;">';
+    html += '<td colspan="3" style="padding:3px 6px;color:#888;">TOTALS</td>';
+    html += '<td style="text-align:center;padding:3px 6px;color:#fff;">' + totAb + '</td>';
+    html += '<td style="text-align:center;padding:3px 6px;color:#fff;">' + totR + '</td>';
+    html += '<td style="text-align:center;padding:3px 6px;color:#fff;">' + totH + '</td>';
+    html += '<td style="text-align:center;padding:3px 6px;color:#fff;">' + totRbi + '</td>';
+    html += '<td style="text-align:center;padding:3px 6px;color:#fff;">' + totBb + '</td>';
+    html += '<td style="text-align:center;padding:3px 6px;color:#fff;">' + totSo + '</td>';
+    html += '<td></td>';
+    html += '</tr>';
+
+    html += '</table></div>';
+    return html;
+  }
+
+  var html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:4px;">';
+  html += '<div>' + buildTeamCard(window._lastVisPlayers, visName, 'vis') + '</div>';
+  html += '<div>' + buildTeamCard(window._lastHomPlayers, homName, 'hom') + '</div>';
+  html += '</div>';
+  wrap.innerHTML = html;
+}
 
 
 </script>
