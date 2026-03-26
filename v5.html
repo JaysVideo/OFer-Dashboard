@@ -1444,16 +1444,22 @@ function parseGame(xmlText) {
         // Format B: narrative-only — parse from text
         // Skip runner/substitution plays (no real PA)
         const narrLower = narrText.toLowerCase();
+        // Skip runner advances, stolen bases, scores — these are mid-PA events
+        // NOTE: do NOT filter on field positions (" to ss", " to lf" etc) because
+        // those appear in legitimate play results like "popped up to ss", "flied out to lf"
         const isRunnerPlay = (
           narrLower.includes(' stole ') ||
           narrLower.includes(' advanced ') ||
-          narrLower.includes(' scored') ||
-          narrLower.includes(' to p for ') ||
+          /\bscored\b/.test(narrLower) ||
           narrLower.includes('picked off') ||
           narrLower.includes('no play') ||
-          /^[a-z]+ to (p|c|1b|2b|3b|ss|lf|cf|rf) for [a-z]+/i.test(narrText)
+          narrLower.includes(' to p for ') ||
+          narrLower.includes('pinch hit for') ||
+          narrLower.includes('pinch ran for') ||
+          // Defensive/pitching sub: "Name to position" without starting with batter name
+          /^[a-z]+ to (p|c|1b|2b|3b|ss|lf|cf|rf|ph|pr)(\s+for\s+[a-z]+)?\s*\.?\s*$/i.test(narrText)
         );
-        // Also skip if the narrative doesn't start with the batter's name or initial
+        // Skip if narrative doesn't start with the batter's name
         const bLast = bName.split(',')[0].toLowerCase();
         const startsWithBatter = narrLower.startsWith(bName.toLowerCase()) ||
           narrLower.startsWith(bLast);
