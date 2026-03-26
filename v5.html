@@ -1477,7 +1477,6 @@ function parseGame(xmlText) {
         const narrMain = narrLower.split(';')[0].trim();
         const isRunnerPlay = (
           narrMain.includes(' stole ') ||
-          narrMain.includes(' advanced ') ||
           /\bscored\b/.test(narrMain) ||
           narrLower.includes('picked off') ||
           narrLower.includes('no play') ||
@@ -3063,15 +3062,15 @@ function renderScorecard() {
 
       if (bEl) {
         var ab  = parseInt(bEl.getAttribute('ab')  || '0');
-        var av  = bEl.getAttribute('action')   || '';
-        var dv  = bEl.getAttribute('decision')  || '';
+        var av  = (bEl.getAttribute('action')   || '').trim();
+        var dv  = (bEl.getAttribute('decision')  || '').trim();
         if (ab < 1 && !av && !dv) return;
-        action = dv || av;
+        action = dv || av;  // decision takes precedence (e.g. SF8 → SF), fallback to action
       } else {
         if (!narrText) return;
         var nl  = narrText.toLowerCase();
         var nm  = nl.split(';')[0].trim();
-        var skip = nm.includes(' stole ') || nm.includes(' advanced ') ||
+        var skip = nm.includes(' stole ') ||
           /\bscored\b/.test(nm) || nl.includes('picked off') ||
           nl.includes('pinch hit') || nl.includes('pinch ran') ||
           nl.includes('mound visit') || nl.includes('no play') ||
@@ -3108,20 +3107,25 @@ function renderScorecard() {
       map[key][innNum] = existing ? existing + '/' + sym : sym;
     }
 
-    // Walk <inning number="N"><batting vh="V|H"><play> — works for both formats
-    xml.querySelectorAll('inning').forEach(function(inn) {
+    // Walk every <play> element and find its inning number by walking up the DOM.
+    // This is robust across all XML formats and browser XML parsers.
+    xml.querySelectorAll('play').forEach(function(play) {
+      // Walk up to find <batting vh="V|H"> parent
+      var bat = play.parentElement || play.parentNode;
+      if (!bat || bat.tagName.toLowerCase() !== 'batting') return;
+      if (bat.getAttribute('vh') !== vh) return;
+
+      // Walk up to find <inning number="N"> grandparent
+      var inn = bat.parentElement || bat.parentNode;
+      if (!inn || inn.tagName.toLowerCase() !== 'inning') return;
       var innNum = parseInt(inn.getAttribute('number') || '0');
       if (!innNum) return;
-      inn.querySelectorAll('batting').forEach(function(bat) {
-        if (bat.getAttribute('vh') !== vh) return;
-        bat.querySelectorAll('play').forEach(function(play) {
-          var bname  = play.getAttribute('batter') || '';
-          var narr   = play.querySelector('narrative');
-          var narrT  = narr ? (narr.getAttribute('text') || '') : '';
-          var bEl    = play.querySelector('batter');
-          recordPlay(bname, innNum, narrT, bEl);
-        });
-      });
+
+      var bname  = play.getAttribute('batter') || '';
+      var narr   = play.querySelector('narrative');
+      var narrT  = narr ? (narr.getAttribute('text') || '') : '';
+      var bEl    = play.querySelector('batter');
+      recordPlay(bname, innNum, narrT, bEl);
     });
 
     return map;
