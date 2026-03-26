@@ -3102,9 +3102,10 @@ function renderScorecard() {
 
       var sym = codeToSym(action, narrText);
       if (!sym) return;
-      if (!map[bname]) map[bname] = {};
-      var existing = map[bname][innNum] || '';
-      map[bname][innNum] = existing ? existing + '/' + sym : sym;
+      var key = bname.toLowerCase().trim();
+      if (!map[key]) map[key] = {};
+      var existing = map[key][innNum] || '';
+      map[key][innNum] = existing ? existing + '/' + sym : sym;
     }
 
     // Walk <inning number="N"><batting vh="V|H"><play> — works for both formats
