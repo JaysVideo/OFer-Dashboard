@@ -1515,8 +1515,15 @@ function parseGame(xmlText) {
           action, decision, desc,
           isOut: outEl === '1',
           isRoe: roeEl === '1',
-          paRbi                           // per-PA RBI from batter element
+          paRbi
         };
+        // hrRbiMap: persist HR per-PA RBI separately (survives subsequent PAs)
+        if ((action === 'HR' || decision === 'HR') && bEl) {
+          window._hrRbiMap = window._hrRbiMap || {};
+          nameKeys(bName).forEach(function(k) {
+            window._hrRbiMap[k] = paRbi;
+          });
+        }
       }
     });
     window._lastPlayMap = lastPlayMap;
@@ -2219,17 +2226,16 @@ function buildOfer(p) {
     // RULE 7: Most important first: HR > 3B > 2B > 1B
     // RULE 5: Spell out single HR type; multiple = "X HR"
     if (hr > 0) {
-      // Use per-PA rbi from lastPlayMap if available — avoids grand slam miscalc
-      const _keys = nameKeys(p.short || p.name || '');
-      const _pm  = window._lastPlayMap
-        ? (_keys.reduce((found, k) => found || window._lastPlayMap[k], null))
+      // Use hrRbiMap for HR type — persists even after player bats again
+      // Falls back to narrative parsing then hrLabel estimation
+      const _hrKeys = nameKeys(p.short || p.name || '');
+      const _hrRbi  = window._hrRbiMap
+        ? _hrKeys.reduce((found, k) => found != null ? found : window._hrRbiMap[k], null)
         : null;
-      const _paRbi = (_pm && _pm.action === 'HR' && _pm.paRbi != null) ? _pm.paRbi : null;
-      if (_paRbi !== null) {
-        // Direct per-PA rbi: 1=solo, 2=2-run, 3=3-run, 4=grand slam
-        const _lbl = _paRbi >= 4 ? 'Grand Slam' : _paRbi === 3 ? '3-Run Home Run' :
-                     _paRbi === 2 ? '2-Run Home Run' : 'Solo Home Run';
-        parts.push(_lbl);
+      if (_hrRbi != null) {
+        const _lbl = _hrRbi >= 4 ? 'Grand Slam' : _hrRbi === 3 ? '3-Run Home Run' :
+                     _hrRbi === 2 ? '2-Run Home Run' : 'Solo Home Run';
+        parts.push(hr === 1 ? _lbl : `${hr} HR`);
       } else {
         parts.push(hr === 1 ? hrLabel(rbi, s, d, t, p.hbp||0, p.sf||0, p.hasHitTypes) : `${hr} HR`);
       }
@@ -3140,6 +3146,15 @@ function renderScorecard() {
       nameKeys(bname).forEach(function(alias) {
         if (alias !== primaryKey) map.__aliases__[alias] = primaryKey;
       });
+      // For HR plays in Format B, extract paRbi from narrative for hrRbiMap
+      if (sym === 'HR' && !bEl && narrText) {
+        var rbiMatch = narrText.match(/(\d+)\s+rbi/i);
+        var paRbiNarr = rbiMatch ? parseInt(rbiMatch[1]) : 1; // default solo if no RBI in narrative
+        // "RBI" with no number means 1 RBI
+        if (!rbiMatch && /\brbi\b/i.test(narrText)) paRbiNarr = 1;
+        window._hrRbiMap = window._hrRbiMap || {};
+        nameKeys(bname).forEach(function(k) { window._hrRbiMap[k] = paRbiNarr; });
+      }
     }
 
     // Walk every <play> element and find its inning number by walking up the DOM.
