@@ -3293,19 +3293,19 @@ function renderScorecard() {
       totRbi+=p.rbi||0; totBb+=p.bb||0; totSo+=p.so||0;
     });
 
-    var cellW = '32px';
-    var th = 'style="background:#111;border:1px solid #222;padding:3px 2px;text-align:center;' +
-             'font-size:9px;letter-spacing:1px;color:#555;font-family:monospace;white-space:nowrap;"';
-    var td = 'style="border:1px solid #1a1a1a;padding:2px;text-align:center;vertical-align:middle;' +
-             'min-width:' + cellW + ';height:32px;"';
-    var tdStat = 'style="border:1px solid #1a1a1a;padding:2px 4px;text-align:center;vertical-align:middle;' +
-                 'font-size:11px;font-family:monospace;color:#aaa;white-space:nowrap;"';
-    var tdName = 'style="border:1px solid #1a1a1a;padding:3px 8px;text-align:left;vertical-align:middle;' +
-                 'font-size:11px;font-family:monospace;white-space:nowrap;"';
+    var cellW = '28px';  // narrower inning columns
+    var th = 'style="background:#111;border:1px solid #222;padding:4px 2px;text-align:center;' +
+             'font-size:12px;letter-spacing:0.5px;color:#666;font-family:monospace;white-space:nowrap;"';
+    var td = 'style="border:1px solid #1a1a1a;padding:3px 2px;text-align:center;vertical-align:middle;' +
+             'min-width:' + cellW + ';height:36px;"';
+    var tdStat = 'style="border:1px solid #1a1a1a;padding:3px 6px;text-align:center;vertical-align:middle;' +
+                 'font-size:13px;font-family:monospace;color:#aaa;white-space:nowrap;"';
+    var tdName = 'style="border:1px solid #1a1a1a;padding:4px 10px;text-align:left;vertical-align:middle;' +
+                 'font-size:13px;font-family:monospace;white-space:nowrap;"';
 
     var html = '<div style="margin-bottom:20px;">';
     // Team header
-    html += '<div style="font-family:Oswald,sans-serif;font-size:13px;font-weight:800;' +
+    html += '<div style="font-family:Oswald,sans-serif;font-size:15px;font-weight:800;' +
             'letter-spacing:2px;text-transform:uppercase;color:' + color + ';' +
             'padding:5px 8px;border-left:3px solid ' + color + ';margin-bottom:4px;">' +
             teamName + '</div>';
@@ -3314,7 +3314,7 @@ function renderScorecard() {
 
     // Header row
     html += '<thead><tr>';
-    html += '<th ' + th + ' style="background:#111;border:1px solid #222;padding:3px 4px;text-align:left;font-size:9px;color:#555;font-family:monospace;">LINEUP</th>';
+    html += '<th ' + th + ' style="background:#111;border:1px solid #222;padding:4px 8px;text-align:left;font-size:12px;color:#666;font-family:monospace;">LINEUP</th>';
     html += '<th ' + th + '>POS</th>';
     inns.forEach(function(n){ html += '<th ' + th + '>' + n + '</th>'; });
     html += '<th ' + th + '>AB</th>';
@@ -3347,10 +3347,10 @@ function renderScorecard() {
       html += '<td ' + tdName + '>';
       html += '<span style="color:' + color + ';font-weight:700;margin-right:6px;">' + p.uni + '</span>';
       html += '<span style="color:#ccc;">' + p.name + '</span>';
-      if (isExtra) html += ' <span style="color:#444;font-size:9px;">(SUB)</span>';
+      if (isExtra) html += ' <span style="color:#444;font-size:11px;">(SUB)</span>';
       html += '</td>';
       // Pos
-      html += '<td ' + tdStat + ' style="border:1px solid #1a1a1a;padding:2px 4px;text-align:center;vertical-align:middle;font-size:10px;font-family:monospace;color:#666;">' + (p.pos||'—') + '</td>';
+      html += '<td ' + tdStat + ' style="border:1px solid #1a1a1a;padding:3px 4px;text-align:center;vertical-align:middle;font-size:12px;font-family:monospace;color:#666;">' + (p.pos||'—') + '</td>';
 
       // Inning cells
       inns.forEach(function(n) {
@@ -3360,8 +3360,8 @@ function renderScorecard() {
           var cellContent = parts.map(function(s) {
             var sc = symColor(s);
             var fw = (s === 'HR' || s === '3B' || s === '2B' || s === '1B') ? '700' : '600';
-            return '<span style="color:' + sc + ';font-weight:' + fw + ';font-size:10px;font-family:monospace;">' + s + '</span>';
-          }).join('<span style="color:#333;font-size:8px;">/</span>');
+            return '<span style="color:' + sc + ';font-weight:' + fw + ';font-size:12px;font-family:monospace;">' + s + '</span>';
+          }).join('<span style="color:#333;font-size:10px;">/</span>');
           html += '<td ' + td + '>' + cellContent + '</td>';
         } else {
           html += '<td ' + td + '><span style="color:#1e1e1e;font-size:16px;">·</span></td>';
@@ -3373,9 +3373,9 @@ function renderScorecard() {
       var rBold = (p.r > 0) ? 'color:#00c97a;' : '';
       var rbiBold = (p.rbi > 0) ? 'color:#00c97a;' : '';
       html += '<td ' + tdStat + '>' + (p.ab||0) + '</td>';
-      html += '<td style="border:1px solid #1a1a1a;padding:2px 4px;text-align:center;vertical-align:middle;font-size:11px;font-family:monospace;' + rBold + '">' + (p.r||0) + '</td>';
-      html += '<td style="border:1px solid #1a1a1a;padding:2px 4px;text-align:center;vertical-align:middle;font-size:11px;font-family:monospace;' + hBold + '">' + (p.h||0) + '</td>';
-      html += '<td style="border:1px solid #1a1a1a;padding:2px 4px;text-align:center;vertical-align:middle;font-size:11px;font-family:monospace;' + rbiBold + '">' + (p.rbi||0) + '</td>';
+      html += '<td style="border:1px solid #1a1a1a;padding:3px 5px;text-align:center;vertical-align:middle;font-size:13px;font-family:monospace;' + rBold + '">' + (p.r||0) + '</td>';
+      html += '<td style="border:1px solid #1a1a1a;padding:3px 5px;text-align:center;vertical-align:middle;font-size:13px;font-family:monospace;' + hBold + '">' + (p.h||0) + '</td>';
+      html += '<td style="border:1px solid #1a1a1a;padding:3px 5px;text-align:center;vertical-align:middle;font-size:13px;font-family:monospace;' + rbiBold + '">' + (p.rbi||0) + '</td>';
       html += '<td ' + tdStat + '>' + (p.bb||0) + '</td>';
       html += '<td ' + tdStat + '>' + (p.so||0) + '</td>';
       html += '</tr>';
@@ -3383,14 +3383,14 @@ function renderScorecard() {
 
     // Totals row
     html += '<tr style="border-top:2px solid #333;background:#0a0a0a;">';
-    html += '<td colspan="2" ' + tdName + ' style="border:1px solid #1a1a1a;padding:3px 8px;text-align:left;vertical-align:middle;font-size:10px;font-family:monospace;color:#555;font-weight:700;">TOTALS</td>';
+    html += '<td colspan="2" ' + tdName + ' style="border:1px solid #1a1a1a;padding:3px 8px;text-align:left;vertical-align:middle;font-size:12px;font-family:monospace;color:#555;font-weight:700;">TOTALS</td>';
     inns.forEach(function(){ html += '<td ' + td + '></td>'; });
-    html += '<td ' + tdStat + ' style="border:1px solid #1a1a1a;padding:2px 4px;text-align:center;vertical-align:middle;font-size:11px;font-family:monospace;color:#fff;font-weight:700;">' + totAb + '</td>';
-    html += '<td ' + tdStat + ' style="border:1px solid #1a1a1a;padding:2px 4px;text-align:center;vertical-align:middle;font-size:11px;font-family:monospace;color:#fff;font-weight:700;">' + totR + '</td>';
-    html += '<td ' + tdStat + ' style="border:1px solid #1a1a1a;padding:2px 4px;text-align:center;vertical-align:middle;font-size:11px;font-family:monospace;color:#fff;font-weight:700;">' + totH + '</td>';
-    html += '<td ' + tdStat + ' style="border:1px solid #1a1a1a;padding:2px 4px;text-align:center;vertical-align:middle;font-size:11px;font-family:monospace;color:#fff;font-weight:700;">' + totRbi + '</td>';
-    html += '<td ' + tdStat + ' style="border:1px solid #1a1a1a;padding:2px 4px;text-align:center;vertical-align:middle;font-size:11px;font-family:monospace;color:#fff;font-weight:700;">' + totBb + '</td>';
-    html += '<td ' + tdStat + ' style="border:1px solid #1a1a1a;padding:2px 4px;text-align:center;vertical-align:middle;font-size:11px;font-family:monospace;color:#fff;font-weight:700;">' + totSo + '</td>';
+    html += '<td ' + tdStat + ' style="border:1px solid #1a1a1a;padding:3px 5px;text-align:center;vertical-align:middle;font-size:13px;font-family:monospace;color:#fff;font-weight:700;">' + totAb + '</td>';
+    html += '<td ' + tdStat + ' style="border:1px solid #1a1a1a;padding:3px 5px;text-align:center;vertical-align:middle;font-size:13px;font-family:monospace;color:#fff;font-weight:700;">' + totR + '</td>';
+    html += '<td ' + tdStat + ' style="border:1px solid #1a1a1a;padding:3px 5px;text-align:center;vertical-align:middle;font-size:13px;font-family:monospace;color:#fff;font-weight:700;">' + totH + '</td>';
+    html += '<td ' + tdStat + ' style="border:1px solid #1a1a1a;padding:3px 5px;text-align:center;vertical-align:middle;font-size:13px;font-family:monospace;color:#fff;font-weight:700;">' + totRbi + '</td>';
+    html += '<td ' + tdStat + ' style="border:1px solid #1a1a1a;padding:3px 5px;text-align:center;vertical-align:middle;font-size:13px;font-family:monospace;color:#fff;font-weight:700;">' + totBb + '</td>';
+    html += '<td ' + tdStat + ' style="border:1px solid #1a1a1a;padding:3px 5px;text-align:center;vertical-align:middle;font-size:13px;font-family:monospace;color:#fff;font-weight:700;">' + totSo + '</td>';
     html += '</tr>';
 
     html += '</tbody></table></div>';
