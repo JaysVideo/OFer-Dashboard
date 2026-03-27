@@ -2595,12 +2595,20 @@ let outputWriting    = false;
 
 function getStatDetail(p) {
   const ofer = buildOfer(p);
+  // Empty: no data at all
   if (ofer.cls === 'emp') return '';
   const text = ofer.text;
   const parenIdx = text.indexOf('(');
-  const detail = parenIdx > -1 ? text.substring(parenIdx)
-               : (text && text !== '—' ? '(' + text + ')' : '');
-  return detail.toUpperCase();
+  if (parenIdx > -1) {
+    // Has parenthetical content — use it
+    return text.substring(parenIdx).toUpperCase();
+  }
+  // neu class: walk/SF/HBP with no AB — text is plain like "Sac Fly, Walk"
+  if (ofer.cls === 'neu' && text && text !== '—') {
+    return '(' + text.toUpperCase() + ')';
+  }
+  // Pure score line like "0-2" or "1-3" with no detail — export blank
+  return '';
 }
 
 function buildOutputXML() {
