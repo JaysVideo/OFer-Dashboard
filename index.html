@@ -1801,29 +1801,37 @@ function parseNarrativeAction(narrative, batterName) {
   }
   if (/grounded out/.test(t)) {
     var loc = t.replace(/grounded out\s*(to\s*)?/,'').replace(/,.*$/,'').trim();
-    return { action:'G',  decision:'G',  desc: loc ? 'to ' + loc : '' };
+    var gnum = fieldPos(loc);
+    var gcode = 'G' + (gnum || '');
+    return { action:gcode, decision:gcode, desc: loc ? 'to ' + loc : '' };
   }
   if (/flied out/.test(t)) {
-    // Check for sacrifice fly embedded in flyout narrative
     if (/sacrifice fly|\bsf\b|\bsac\b/.test(t)) return { action:'SF', decision:'SF', desc:'' };
     var loc = t.replace(/flied out\s*(to\s*)?/,'').replace(/,.*$/,'').trim();
-    return { action:'F',  decision:'F',  desc: loc ? 'to ' + loc : '' };
+    var fnum = fieldPos(loc); var fcode = 'F' + (fnum || '');
+    return { action:fcode, decision:fcode, desc: loc ? 'to ' + loc : '' };
   }
   if (/lined out/.test(t)) {
     var loc = t.replace(/lined out\s*(to\s*)?/,'').replace(/,.*$/,'').trim();
-    return { action:'F',  decision:'F',  desc: loc ? 'to ' + loc : '' };
+    var lnum = fieldPos(loc); var lcode = 'L' + (lnum || '');
+    return { action:lcode, decision:lcode, desc: loc ? 'to ' + loc : '' };
   }
   if (/fouled out/.test(t)) {
     var loc = t.replace(/fouled out\s*(to\s*)?/,'').replace(/,.*$/,'').trim();
-    return { action:'F',  decision:'F',  desc: loc ? 'to ' + loc : '' };
+    var fonum = fieldPos(loc); var focode = 'F' + (fonum || '');
+    return { action:focode, decision:focode, desc: loc ? 'to ' + loc : '' };
   }
   if (/popped up/.test(t)) {
     var loc = t.replace(/popped up\s*(to\s*)?/,'').replace(/,.*$/,'').trim();
-    return { action:'P',  decision:'P',  desc: loc ? 'to ' + loc : '' };
+    var pnum = fieldPos(loc);
+    var pcode = 'P' + (pnum || '');
+    return { action:pcode, decision:pcode, desc: loc ? 'to ' + loc : '' };
   }
   if (/popped out/.test(t)) {
     var loc = t.replace(/popped out\s*(to\s*)?/,'').replace(/,.*$/,'').trim();
-    return { action:'P',  decision:'P',  desc: loc ? 'to ' + loc : '' };
+    var pnum = fieldPos(loc);
+    var pcode = 'P' + (pnum || '');
+    return { action:pcode, decision:pcode, desc: loc ? 'to ' + loc : '' };
   }
   if (/out at (first|second|third|home)/.test(t)) return { action:'FC', decision:'FC', desc:'' };
 
@@ -1887,28 +1895,40 @@ function actionToLabel(action, desc, decision) {
   if (a.startsWith('SF')) return 'SAC FLY';
   if (a.startsWith('SH')) return 'SAC BUNT';
 
-  // Flyouts — F + position number(s)
-  if (a.startsWith('F') && /^F\d/.test(a)) {
-    const pos = a.substring(1, 2);
-    const posMap = {'1':'P','2':'C','3':'1B','4':'2B','5':'3B','6':'SS','7':'LF','8':'CF','9':'RF'};
+  // Flyouts — F + position number(s) or bare F with desc
+  if (a.startsWith('F') && !/^F[C]/.test(a) && (a === 'F' || /^F\d/.test(a))) {
+    const pos = a.length > 1 ? a.substring(1, 2) : '';
     const fieldName = {'1':'PITCHER','2':'CATCHER','3':'FIRST BASE','4':'SECOND BASE',
                        '5':'THIRD BASE','6':'SHORTSTOP','7':'LEFT FIELD','8':'CENTER FIELD','9':'RIGHT FIELD'};
-    return d ? 'FLYOUT ' + d.toUpperCase() : 'F' + pos + ' — ' + (fieldName[pos] || pos);
+    if (pos) return 'F' + pos + ' — ' + (fieldName[pos] || pos);
+    return d ? 'FLYOUT — ' + d.toUpperCase() : 'FLYOUT';
   }
 
-  // Popups — P + position
-  if (a.startsWith('P') && /^P\d/.test(a)) {
-    const pos = a.substring(1, 2);
+  // Lineouts — L + position
+  if (a === 'L' || /^L\d/.test(a)) {
+    const pos = a.length > 1 ? a.substring(1, 2) : '';
     const fieldName = {'1':'PITCHER','2':'CATCHER','3':'FIRST BASE','4':'SECOND BASE',
                        '5':'THIRD BASE','6':'SHORTSTOP','7':'LEFT FIELD','8':'CENTER FIELD','9':'RIGHT FIELD'};
-    return d ? 'POPUP ' + d.toUpperCase() : 'POP — ' + (fieldName[pos] || pos);
+    if (pos) return 'L' + pos + ' — ' + (fieldName[pos] || pos);
+    return d ? 'LINEOUT — ' + d.toUpperCase() : 'LINEOUT';
   }
 
-  // Groundouts — G + fielder sequence (e.g. G63 = SS to 1B)
-  if (a.startsWith('G') && /^G\d/.test(a)) {
+  // Popups — P + position or bare P with desc
+  if ((a === 'P' || /^P\d/.test(a)) && a !== 'P') {
+    const pos = a.length > 1 ? a.substring(1, 2) : '';
+    const fieldName = {'1':'PITCHER','2':'CATCHER','3':'FIRST BASE','4':'SECOND BASE',
+                       '5':'THIRD BASE','6':'SHORTSTOP','7':'LEFT FIELD','8':'CENTER FIELD','9':'RIGHT FIELD'};
+    if (pos) return 'POP — ' + (fieldName[pos] || pos);
+    return d ? 'POPUP — ' + d.toUpperCase() : 'POPUP';
+  }
+  if (a === 'P') return d ? 'POPUP — ' + d.toUpperCase() : 'POPUP';
+
+  // Groundouts — G + fielder sequence or bare G with desc
+  if (a === 'G' || /^G\d/.test(a)) {
     const fieldName = {'1':'P','2':'C','3':'1B','4':'2B','5':'3B','6':'SS','7':'LF','8':'CF','9':'RF'};
-    const firstFielder = fieldName[a.charAt(1)] || a.charAt(1);
-    return d ? 'GROUNDOUT ' + d.toUpperCase() : 'GROUNDOUT — ' + firstFielder;
+    const firstFielder = a.length > 1 ? (fieldName[a.charAt(1)] || a.charAt(1)) : '';
+    if (firstFielder) return 'GROUNDOUT — ' + firstFielder;
+    return d ? 'GROUNDOUT — ' + d.toUpperCase() : 'GROUNDOUT';
   }
 
   // Double plays
