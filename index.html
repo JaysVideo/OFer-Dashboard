@@ -2209,14 +2209,15 @@ function sb(lbl, val) {
 // ════════════════════════════════════════════════════════════════════════════
 function buildOfer(p) {
   const { ab, h, rbi, r, so, bb, s, d, t, hr, gidp, sb, sf, roe } = p;
+  const hbp = p.hbp || 0;
 
-  // RULE 3: No official AB recorded yet — never show 0-0
-  // Combine all no-AB contributions: SF, Walk, HBP
+  // ── RULE 3: ab=0 — never show 0-0 ────────────────────────────────────────
+  // Combine SF (Rule 8), Walk (Rule 3), HBP in priority order
   if (ab === 0 && h === 0) {
     const parts0 = [];
-    if (sf > 0)  parts0.push(sf===1 ? 'Sac Fly' : `${sf} Sac Flies`);   // RULE 8
-    if (bb > 0)  parts0.push(bb===1 ? 'Walk'     : `${bb} Walks`);
-    if ((p.hbp||0) > 0) parts0.push((p.hbp||0)===1 ? 'HBP' : `${p.hbp} HBP`);
+    if (sf  > 0)  parts0.push(sf===1  ? 'Sac Fly'  : `${sf} Sac Flies`);
+    if (bb  > 0)  parts0.push(bb===1  ? 'Walk'      : `${bb} Walks`);
+    if (hbp > 0)  parts0.push(hbp===1 ? 'HBP'       : `${hbp} HBP`);
     if (parts0.length > 0) return { text: parts0.join(', '), cls:'neu' };
     return { text:'—', cls:'emp' };
   }
@@ -2227,69 +2228,88 @@ function buildOfer(p) {
   if (h > 0) {
     const parts = [];
 
-    // RULE 7: Most important first: HR > 3B > 2B > 1B
-    // RULE 5: Spell out single HR type; multiple = "X HR"
+    // RULE 5 + 7: HR type label — most important first
     if (hr > 0) {
-      // Use hrRbiMap for HR type — persists even after player bats again
-      // Falls back to narrative parsing then hrLabel estimation
-      const _hrKeys = nameKeys(p.short || p.name || '');
-      const _hrRbi  = window._hrRbiMap
-        ? _hrKeys.reduce((found, k) => found != null ? found : window._hrRbiMap[k], null)
-        : null;
-      if (_hrRbi != null) {
-        const _lbl = _hrRbi >= 4 ? 'Grand Slam' : _hrRbi === 3 ? '3-Run Home Run' :
-                     _hrRbi === 2 ? '2-Run Home Run' : 'Solo Home Run';
-        parts.push(hr === 1 ? _lbl : `${hr} HR`);
+      if (hr === 1) {
+        const _hrKeys = nameKeys(p.short || p.name || '');
+        const _hrRbi  = window._hrRbiMap
+          ? _hrKeys.reduce((found, k) => found != null ? found : window._hrRbiMap[k], null)
+          : null;
+        if (_hrRbi != null) {
+          parts.push(_hrRbi >= 4 ? 'Grand Slam' : _hrRbi === 3 ? '3-Run Home Run' :
+                     _hrRbi === 2 ? '2-Run Home Run' : 'Solo Home Run');
+        } else {
+          parts.push(hrLabel(rbi, s, d, t, hbp, sf, p.hasHitTypes));
+        }
       } else {
-        parts.push(hr === 1 ? hrLabel(rbi, s, d, t, p.hbp||0, p.sf||0, p.hasHitTypes) : `${hr} HR`);
+        parts.push(`${hr} HR`);
       }
     }
+
+    // RULE 7: Triple > Double > Single
     if (t > 0) parts.push(t===1 ? 'Triple'  : `${t} Triples`);
     if (d > 0) parts.push(d===1 ? 'Double'  : `${d} Doubles`);
     if (s > 0) parts.push(s===1 ? 'Single'  : `${s} Singles`);
 
-    // RULE 6: RBI attachment
-    // Calculate RBI that are NOT already implied by HR type label or Sac Fly
-    // HR label implies exactly hrRbi RBI; Sac Fly always implies 1 RBI
-    const hrRbiImplied = hr > 0
-      ? (hr===1 ? Math.min(rbi, Math.max(0, rbi - (s+d+t+(p.hbp||0)+(p.sf||0)))) : 0)
+    // RULE 6: RBI — attach to hit type if single hit, separate if multiple
+    // RBI already implied by: HR label (per paRbi), Sac Fly (1 each)
+    // Use hrRbiMap paRbi for accurate HR RBI credit
+    const _hrKeys2 = nameKeys(p.short || p.name || '');
+    const hrPaRbi  = (hr===1 && window._hrRbiMap)
+      ? _hrKeys2.reduce((found, k) => found != null ? found : window._hrRbiMap[k], null)
+      : null;
+    const hrRbiCredit = hr > 0
+      ? (hr > 1 ? rbi                               // "X HR" implies ALL their RBI — suppress all
+        : (hrPaRbi != null ? hrPaRbi                // exact per-PA count from hrRbiMap
+        : Math.min(rbi, Math.max(0, rbi - (s+d+t+(p.hbp||0)+sf)))))  // fallback estimate
       : 0;
-    const sfRbiImplied = sf > 0 ? sf : 0;  // each SF implies 1 RBI
-    const remainingRbi = Math.max(0, rbi - hrRbiImplied - sfRbiImplied);
+    const sfRbiCredit  = sf;
+    const remainingRbi = Math.max(0, rbi - hrRbiCredit - sfRbiCredit);
 
     if (remainingRbi > 0) {
-      const hitTypes = (t>0?1:0)+(d>0?1:0)+(s>0?1:0);
-      // Find the first non-HR hit part to attach RBI to
-      const firstHitIdx = parts.findIndex(p => !p.includes('HR') && !p.includes('Grand Slam'));
-      if (h===1 && hitTypes===1 && hr===0 && firstHitIdx >= 0) {
-        // Single hit type, no HR → attach: "RBI Double"
-        parts[firstHitIdx] = (remainingRbi===1?'RBI':`${remainingRbi} RBI`) + ' ' + parts[firstHitIdx];
+      const nonHrHits = (t>0?1:0) + (d>0?1:0) + (s>0?1:0);
+      const firstNonHR = parts.findIndex(x => !x.includes('HR') && !x.includes('Grand Slam') &&
+                                               !x.includes('Home Run'));
+      // Rule 6: single hit type → attach ("RBI Double"); multiple → separate ("3 RBI")
+      if (nonHrHits === 1 && hr === 0 && firstNonHR >= 0) {
+        parts[firstNonHR] = (remainingRbi===1?'RBI':`${remainingRbi} RBI`) + ' ' + parts[firstNonHR];
       } else {
-        // Multiple hit types or HR also present → list separately
-        parts.push(remainingRbi===1?'RBI':`${remainingRbi} RBI`);
+        parts.push(remainingRbi===1 ? 'RBI' : `${remainingRbi} RBI`);
       }
     }
 
-    if (r  > 0) parts.push(r===1?'Run':`${r} Runs`);
-    if (sf > 0) parts.push('Sac Fly');                         // RULE 8: never "Sac Fly RBI"
-    if (sb > 0) parts.push(sb===1?'SB':`${sb} SB`);                       // RULE 4: SB shorthand OK
-    if (bb > 0) parts.push(bb===1?'Walk':`${bb} Walks`);
+    // RULE 7: Runs — only show if not implied by HR
+    // Batter always scores on own HR — those runs are implied by the HR label
+    const runsImpliedByHR = hr > 0 ? Math.min(r, hr) : 0;
+    const displayRuns = r - runsImpliedByHR;
+    if (displayRuns > 0) parts.push(displayRuns===1 ? 'Run' : `${displayRuns} Runs`);
 
-    return { text:`${abStr}${parts.length?` (${parts.join(', ')})` :''}`, cls:'pos' };
+    // RULE 8: Sac Fly — show if present, NEVER "Sac Fly RBI"
+    if (sf > 0) parts.push(sf===1 ? 'Sac Fly' : `${sf} Sac Flies`);
+
+    // RULE 4: SB shorthand OK
+    if (sb > 0) parts.push(sb===1 ? 'SB' : `${sb} SB`);
+
+    // RULE 1: Walk NOT shown when player has hits (walks shown only in 0-0 case)
+    // bb is intentionally omitted here
+
+    return { text:`${abStr}${parts.length ? ` (${parts.join(', ')})` : ''}`, cls:'pos' };
   }
 
   // ── 0-FER ─────────────────────────────────────────────────────────────────
-  // RULES 1 & 2: only K, GIDP, Sac Fly, ROE. Strikeouts drop the moment hits exist (handled above).
+  // RULE 1: Show ONLY K, GIDP, Sac Fly, ROE in a 0-fer
+  // RULE 2: Strikeouts drop the moment ANY positive info exists (handled — h=0 here)
   const neg = [];
-  if (so   > 0) neg.push(so===1?'Strikeout':`${so} Strikeouts`);
-  if (gidp > 0) neg.push('GIDP');                              // RULE 4: GIDP shorthand OK
-  if (sf   > 0) neg.push('Sac Fly');                          // RULE 8
+  if (so   > 0) neg.push(so===1   ? 'Strikeout'       : `${so} Strikeouts`);
+  if (gidp > 0) neg.push('GIDP');
+  if (sf   > 0) neg.push(sf===1   ? 'Sac Fly'         : `${sf} Sac Flies`);
   if (roe  > 0) neg.push('Reached on Error');
+  // RULE 1: HBP and BB not shown in 0-fer
 
-  // Walks never shown in a 0-fer (Rule 1 — only K, GIDP, Sac Fly, ROE)
   if (neg.length) return { text:`${abStr} (${neg.join(', ')})`, cls:'neg' };
   return { text:abStr, cls:'neg' };
 }
+
 
 // RULE 5: infer HR type from RBI count
 // Accounts for ALL other RBI sources — hits, HBP, sac fly — before
