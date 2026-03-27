@@ -1303,7 +1303,6 @@ async function browseFile() {
       fileHandle   = handle;
       fallbackFile = null;
       colorsLockedFor = null;
-      userPickedTab   = false;
       const file = await handle.getFile();
       setFileName(file.name);
       closeMenu();
@@ -1323,7 +1322,6 @@ function onFallbackFile(input) {
   fallbackFile    = input.files[0];
   fileHandle      = null;
   colorsLockedFor = null;
-  userPickedTab   = false;
   setFileName(fallbackFile.name);
   closeMenu(); // close the side menu after selection
   readXML();
@@ -2653,10 +2651,8 @@ async function writeOutputFile() {
 // TEAM TAB — show both, away only, or home only
 // ════════════════════════════════════════════════════════════════════════════
 let activeTab    = 'both';
-let userPickedTab = false; // true once user manually taps a tab
 
 function setTab(tab, manual=false) {
-  if (manual) userPickedTab = true;
   activeTab = tab;
   const visPanel  = document.getElementById('visPanel');
   const homPanel  = document.getElementById('homPanel');
@@ -2720,14 +2716,7 @@ function updateTabs(visName, homName, battingSide) {
   const homLbl = document.getElementById('homColorLabel');
   if (visLbl) visLbl.textContent = visName || '—';
   if (homLbl) homLbl.textContent = homName || '—';
-  // Always follow the batting team — switch every half inning automatically
-  // But never override if user is on a special tab (scorecard, pbp)
-  if (battingSide && activeTab !== 'pbp' && activeTab !== 'card') {
-    const newTab = battingSide === 'V' ? 'vis' : 'hom';
-    if (activeTab !== newTab) {
-      setTab(newTab);
-    }
-  }
+  // Tab stays on user selection — no auto switching
 }
 
 window.addEventListener('resize', () => {
