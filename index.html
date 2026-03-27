@@ -3,7 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ESPN-0Fers V1</title>
+<title>ESPN-0Fers V5</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='4' fill='%23d00000'/><text x='16' y='22' font-size='18' text-anchor='middle' font-family='Arial Black,sans-serif' font-weight='900' fill='white'>0F</text></svg>">
+<link rel="shortcut icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='4' fill='%23d00000'/><text x='16' y='22' font-size='18' text-anchor='middle' font-family='Arial Black,sans-serif' font-weight='900' fill='white'>0F</text></svg>">
 <link href="https://fonts.cdnfonts.com/css/futura-std-4" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,400;0,600;0,700;0,800;1,400;1,600;1,700&family=Oswald:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
@@ -27,6 +29,61 @@
     position:sticky;top:0;z-index:200;
   }
   .hdr-l{display:flex;align-items:center;gap:14px;}
+
+  /* ── Hamburger button ─────────────────────────────────────────────────── */
+  .hamburger{
+    background:none;border:none;cursor:pointer;padding:4px 6px;
+    display:flex;flex-direction:column;gap:5px;flex-shrink:0;
+  }
+  .hamburger span{display:block;width:22px;height:2px;background:#ccc;transition:all 0.25s;}
+  .hamburger:hover span{background:#fff;}
+
+  /* ── Slide-out menu ───────────────────────────────────────────────────── */
+  .side-menu{
+    position:fixed;top:0;left:-300px;width:280px;height:100vh;
+    background:#0d0f14;border-right:1px solid var(--border);
+    z-index:1000;transition:left 0.25s ease;
+    display:flex;flex-direction:column;
+    box-shadow:4px 0 24px rgba(0,0,0,0.7);
+  }
+  .side-menu.open{left:0;}
+  .side-menu-overlay{
+    display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:999;
+  }
+  .side-menu-overlay.open{display:block;}
+  .side-menu-header{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 16px;border-bottom:1px solid var(--border);
+    background:#090b0e;
+  }
+  .side-menu-title{
+    font-family:'Futura Std','Oswald',sans-serif;font-size:13px;
+    font-weight:700;letter-spacing:3px;color:#ccc;text-transform:uppercase;
+  }
+  .side-menu-close{
+    background:none;border:none;color:#666;cursor:pointer;
+    font-size:20px;line-height:1;padding:2px 6px;
+  }
+  .side-menu-close:hover{color:#fff;}
+  .side-menu-body{padding:16px;display:flex;flex-direction:column;gap:8px;flex:1;}
+  .menu-section-label{
+    font-family:'Share Tech Mono',monospace;font-size:9px;
+    color:var(--muted);letter-spacing:2px;text-transform:uppercase;
+    padding-bottom:6px;border-bottom:1px solid var(--border);margin-bottom:4px;
+  }
+  .menu-btn{
+    display:flex;align-items:center;gap:10px;
+    background:var(--surface2);border:1px solid var(--border);
+    color:var(--text);font-family:'Futura Std','Oswald',sans-serif;
+    font-size:13px;font-weight:600;letter-spacing:1px;text-transform:uppercase;
+    padding:10px 14px;cursor:pointer;transition:all 0.15s;width:100%;text-align:left;
+  }
+  .menu-btn:hover{background:var(--surface);border-color:#555;color:#fff;}
+  .menu-btn .menu-icon{font-size:16px;flex-shrink:0;}
+  .menu-btn.red{border-color:var(--espn-red);color:var(--espn-red);}
+  .menu-btn.red:hover{background:var(--espn-red);color:#fff;}
+  .menu-divider{height:1px;background:var(--border);margin:8px 0;}
+  .menu-file-input{display:none;}
   .espn-badge{
     background:var(--espn-red);color:#fff;
     font-family:'Oswald',sans-serif;font-weight:700;font-size:20px;letter-spacing:1px;
@@ -81,7 +138,7 @@
   .score-inner{display:flex;align-items:stretch;}
 
   .score-side{
-    flex:1;display:flex;align-items:center;gap:14px;padding:10px 22px;
+    flex:1;display:flex;align-items:center;gap:18px;padding:14px 28px;
     position:relative;overflow:hidden;
   }
   .score-side.vis{background:linear-gradient(135deg, color-mix(in srgb, var(--vis-dark) 90%, transparent) 0%, var(--surface3) 100%);}
@@ -91,11 +148,14 @@
     background:linear-gradient(135deg,rgba(255,255,255,0.03),transparent);
     pointer-events:none;
   }
+  .inning-summary.show{
+    pointer-events:all;
+  }
 
   .s-team-info{display:flex;flex-direction:column;gap:2px;}
-  .s-school{font-family:'Oswald',sans-serif;font-size:20px;font-weight:700;letter-spacing:1px;text-transform:uppercase;line-height:1;}
-  .s-record{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;}
-  .s-score-num{font-family:'Oswald',sans-serif;font-size:46px;font-weight:700;line-height:1;min-width:50px;text-align:center;}
+  .s-school{font-family:'Futura Std','Oswald',sans-serif;font-size:28px;font-weight:800;letter-spacing:2px;text-transform:uppercase;line-height:1;}
+  .s-record{font-family:'Share Tech Mono',monospace;font-size:14px;color:var(--muted);letter-spacing:1px;margin-top:3px;}
+  .s-score-num{font-family:'Futura Std','Oswald',sans-serif;font-size:72px;font-weight:900;line-height:1;min-width:70px;text-align:center;}
   .score-side.vis .s-school{color:var(--vis-primary);}
   .score-side.vis .s-score-num{color:var(--vis-primary);}
   .score-side.hom .s-school{color:var(--hom-primary);text-align:right;}
@@ -104,12 +164,12 @@
 
   .score-mid{
     display:flex;flex-direction:column;align-items:center;justify-content:center;
-    padding:8px 20px;background:var(--surface3);border-left:1px solid var(--border);border-right:1px solid var(--border);
-    gap:4px;min-width:120px;
+    padding:12px 28px;background:var(--surface3);border-left:1px solid var(--border);border-right:1px solid var(--border);
+    gap:6px;min-width:180px;
   }
-  .inn-badge{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--live);border:1px solid var(--live);padding:2px 10px;letter-spacing:1px;white-space:nowrap;}
-  .count-txt{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;text-align:center;}
-  .at-bat-txt{font-family:'Share Tech Mono',monospace;font-size:9px;color:#f5a623;letter-spacing:1px;text-align:center;}
+  .inn-badge{font-family:'Futura Std','Oswald',sans-serif;font-size:16px;font-weight:700;color:var(--live);border:2px solid var(--live);padding:4px 14px;letter-spacing:2px;white-space:nowrap;}
+  .count-txt{font-family:'Share Tech Mono',monospace;font-size:14px;color:var(--muted);letter-spacing:1px;text-align:center;margin-top:4px;}
+  .at-bat-txt{font-family:'Share Tech Mono',monospace;font-size:13px;color:#f5a623;letter-spacing:1px;text-align:center;margin-top:3px;}
 
   /* ══ MAIN GRID ═══════════════════════════════════════════════════════════ */
   /* Team toggle tabs */
@@ -285,8 +345,41 @@
     letter-spacing:0px;
   }
   .ofer-val.emp{color:#888;font-size:14px;font-weight:400;font-style:italic;}
+  /* 0-0 walk — ESPN guide: never show 0-0. Highlight wraps the whole stat line */
+  .ofer-val.walk-highlight{
+    background:#f5a623;color:#000 !important;padding:2px 8px;
+  }
+  .ofer-val.walk-highlight .ofer-score,
+  .ofer-val.walk-highlight .ofer-detail{
+    color:#000 !important;
+  }
+  .walk-manual-tag{
+    display:inline-block;background:#000;color:#f5a623;
+    font-family:'Futura Std','Oswald',sans-serif;
+    font-size:9px;font-weight:800;padding:2px 6px;letter-spacing:1px;
+    text-transform:uppercase;margin-left:0;vertical-align:middle;
+    border-left:2px solid #c47f00;
+  }
 
   /* COPY button sits inside content area */
+  /* Manual override input */
+  .manual-override{
+    display:none;width:100%;
+    background:#0a0c10;border:none;border-top:1px solid #222;
+    color:#f5a623;font-family:'Share Tech Mono',monospace;font-size:11px;
+    padding:6px 10px;letter-spacing:0.5px;outline:none;box-sizing:border-box;
+  }
+  .manual-override:focus{border-top-color:#f5a623;}
+  .manual-override.active{display:block;}
+  .pcard:has(.manual-override.active){border-left-color:#f5a623 !important;}
+
+  .batting-spot-lbl{
+    font-family:'Futura Std','Oswald',sans-serif;font-size:12px;font-weight:700;
+    color:#555;letter-spacing:1px;text-transform:uppercase;
+    padding:0 6px;white-space:nowrap;align-self:center;flex-shrink:1;
+    overflow:hidden;text-overflow:ellipsis;max-width:110px;
+  }
+
   .copy-btn{
     background:#222;border:1px solid #555;color:#e8dfc8;
     font-family:'Futura Std','Barlow Condensed','Oswald',sans-serif;
@@ -301,37 +394,26 @@
   /* ── ROW 3: Stat bar ─ "BA | 0 HR | 0 RBI | .000 OBP" ──────────────────── */
   .stat-bar{
     display:flex;align-items:center;
-    background:#111;
-    border:1px solid #555;border-top:2px solid #333;
-    height:26px;
+    background:#111;border-top:1px solid #2a2a2a;
+    height:30px;
   }
   .stat-cell{
-    flex:1;display:flex;align-items:center;justify-content:center;gap:4px;
-    padding:0 4px;
-    border-right:1px solid #444;
-    height:100%;
+    flex:1;display:flex;align-items:center;justify-content:center;gap:5px;
+    padding:0 8px;border-right:1px solid #222;height:100%;
   }
   .stat-cell:last-child{border-right:none;}
-  /* value first, then label — matches ESPN: "0 HR", ".000 OBP" */
-  .stat-cell-val{
+  .stat-cell-val,.stat-val{
     font-family:'Futura Std','Barlow Condensed','Oswald',sans-serif;
-    font-size:15px;font-weight:800;color:#fff;letter-spacing:0.5px;
+    font-size:16px;font-weight:800;color:#ccc;letter-spacing:0.5px;
+    white-space:nowrap;display:flex;align-items:center;gap:4px;
   }
   .stat-cell-val.hot{color:#f5a623;}
-  .stat-cell-lbl{
+  .stat-cell-lbl,.stat-lbl{
     font-family:'Futura Std','Barlow Condensed','Oswald',sans-serif;
-    font-size:15px;font-weight:600;color:#fff;letter-spacing:0.5px;
+    font-size:14px;font-weight:600;color:#777;letter-spacing:0.5px;
+    white-space:nowrap;
   }
-  /* BA field: just the value, no label prefix */
-  .stat-cell.ba .stat-cell-lbl{display:none;}
-  .stat-cell.ba .stat-cell-val{font-size:15px;}
-  .stat-cell.ba::after{
-    content:'BA';
-    font-family:'Futura Std','Barlow Condensed','Oswald',sans-serif;
-    font-size:13px;font-weight:600;color:#fff;margin-left:4px;
-  }
-
-  /* hide old elements */
+  .stat-cell.ba .stat-cell-val,.stat-cell.ba .stat-val{color:#fff;}
   .stat-row{display:none;}
   .season-strip{display:none;}
   .sb,.sl,.sv{display:none;}
@@ -340,9 +422,251 @@
   .empty{text-align:center;padding:50px 16px;font-family:'Share Tech Mono',monospace;color:var(--dimmed);font-size:10px;letter-spacing:1px;line-height:2.8;}
   .empty .ico{font-size:28px;margin-bottom:10px;}
 
+  /* ── Inning Summary Overlay ─────────────────────────────────────────────── */
+  .inning-summary{
+    position:fixed;left:50%;bottom:-100%;transform:translateX(-50%);
+    width:min(680px, 92vw);z-index:900;
+    background:#0d0f14;
+    border:1px solid #333;
+    border-top:3px solid var(--espn-red);
+    box-shadow:0 -8px 40px rgba(0,0,0,0.8);
+    transition:bottom 0.45s cubic-bezier(0.22,1,0.36,1);
+    overflow:hidden;
+    pointer-events:none;
+  }
+  .inning-summary.show{
+    pointer-events:all;
+  }
+  .inning-summary.show{bottom:40px;}
+
+  .inn-sum-header{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:10px 18px 8px 18px;
+    background:#111;border-bottom:1px solid #222;
+  }
+  .inn-sum-title{
+    font-family:'Futura Std','Oswald',sans-serif;
+    font-size:20px;font-weight:900;letter-spacing:3px;
+    text-transform:uppercase;color:#fff;
+  }
+  .inn-sum-team{
+    font-family:'Futura Std','Oswald',sans-serif;
+    font-size:13px;font-weight:700;letter-spacing:2px;
+    text-transform:uppercase;color:#888;
+  }
+  .inn-sum-counts{
+    display:flex;gap:0;border-bottom:1px solid #1a1a1a;
+  }
+  .inn-sum-count{
+    flex:1;display:flex;flex-direction:column;align-items:center;
+    padding:10px 8px;border-right:1px solid #1a1a1a;
+    background:#0a0c10;
+  }
+  .inn-sum-count:last-child{border-right:none;}
+  .inn-sum-count-val{
+    font-family:'Futura Std','Oswald',sans-serif;
+    font-size:36px;font-weight:900;line-height:1;color:#fff;
+  }
+  .inn-sum-count-val.runs{color:var(--espn-red);}
+  .inn-sum-count-lbl{
+    font-family:'Share Tech Mono',monospace;
+    font-size:10px;letter-spacing:2px;color:#555;
+    margin-top:3px;text-transform:uppercase;
+  }
+  .inn-sum-plays{
+    padding:10px 18px 14px 18px;
+    display:flex;flex-direction:column;gap:5px;
+    max-height:160px;overflow-y:auto;
+  }
+  .inn-sum-play{
+    display:flex;align-items:baseline;gap:8px;
+  }
+  .inn-sum-play-name{
+    font-family:'Futura Std','Oswald',sans-serif;
+    font-size:13px;font-weight:700;letter-spacing:1px;
+    text-transform:uppercase;color:#ccc;
+    white-space:nowrap;min-width:130px;
+  }
+  .inn-sum-play-result{
+    font-family:'Futura Std','Oswald',sans-serif;
+    font-size:13px;font-weight:600;letter-spacing:0.5px;
+    text-transform:uppercase;
+  }
+  .inn-sum-play-result.pos{color:#00e676;}
+  .inn-sum-play-result.neg{color:#555;}
+  .inn-sum-play-result.neu{color:#f5a623;}
+
+  /* ── Inning scoring strip ───────────────────────────────────────────────── */
+  .scoring-strip{
+    display:none;background:var(--surface3);
+    border-bottom:1px solid var(--border);
+    padding:4px 16px;overflow-x:auto;
+  }
+  .scoring-strip.on{display:flex;align-items:stretch;gap:0;}
+  .strip-team{
+    font-family:'Share Tech Mono',monospace;font-size:9px;
+    color:var(--muted);letter-spacing:1px;text-transform:uppercase;
+    padding:4px 10px 4px 0;white-space:nowrap;
+    display:flex;flex-direction:column;justify-content:space-around;
+    min-width:70px;border-right:1px solid var(--border);margin-right:4px;
+  }
+  .strip-team span{font-size:11px;font-weight:700;color:var(--text);}
+  .strip-innings{display:flex;gap:0;align-items:stretch;}
+  .strip-inn{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    min-width:28px;padding:2px 4px;border-right:1px solid var(--border2);
+    font-family:'Share Tech Mono',monospace;
+  }
+  .strip-inn-num{font-size:8px;color:#444;letter-spacing:0;}
+  .strip-inn-score{font-size:13px;font-weight:700;color:var(--text);}
+  .strip-inn-score.scored{color:var(--espn-red);}
+  .strip-total{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    min-width:32px;padding:2px 6px;border-left:2px solid var(--border);
+    font-family:'Share Tech Mono',monospace;
+  }
+  .strip-total-lbl{font-size:8px;color:#444;}
+  .strip-total-val{font-size:15px;font-weight:900;color:#fff;}
+
+  /* ── BA trend + streak badges ─────────────────────────────────────────────── */
+  .trend-up{color:#00c97a;font-size:10px;}
+  .trend-dn{color:#ff1744;font-size:10px;}
+  .streak-badge{
+    background:#f5a623;color:#000;
+    font-family:'Futura Std','Oswald',sans-serif;
+    font-size:8px;font-weight:800;padding:1px 4px;letter-spacing:0.5px;
+  }
+
+  /* ── Game notes ──────────────────────────────────────────────────────────── */
+  .game-note-row{
+    display:flex;align-items:center;gap:6px;
+    padding:3px 10px;background:rgba(245,166,35,0.06);
+    border-top:1px solid rgba(245,166,35,0.15);
+  }
+  .game-note-icon{font-size:10px;flex-shrink:0;}
+  .game-note-txt{
+    font-family:'Share Tech Mono',monospace;font-size:9px;
+    color:#f5a623;letter-spacing:0.5px;flex:1;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .game-note-clear{
+    background:none;border:none;color:#555;cursor:pointer;
+    font-size:12px;padding:0 2px;line-height:1;flex-shrink:0;
+  }
+  .game-note-clear:hover{color:#f5a623;}
+
   /* empty */
   .empty{text-align:center;padding:50px 16px;font-family:'Share Tech Mono',monospace;color:var(--dimmed);font-size:10px;letter-spacing:1px;line-height:2.8;}
   .empty .ico{font-size:28px;margin-bottom:10px;}
+
+  /* ── At-bat result flash — overlays the current batter's card only ─────── */
+  .pcard{position:relative;overflow:hidden;}
+  .card-result-overlay{
+    position:absolute;inset:0;z-index:10;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:2px;pointer-events:none;
+    opacity:0;
+  }
+  .card-result-overlay.show{
+    animation: cardFlashIn 0.2s ease forwards, cardFlashOut 0.4s ease 2.6s forwards;
+  }
+  @keyframes cardFlashIn{
+    0%{opacity:0;transform:scale(0.9);}
+    100%{opacity:1;transform:scale(1);}
+  }
+  @keyframes cardFlashOut{
+    0%{opacity:1;}
+    100%{opacity:0;}
+  }
+  .card-result-overlay-bg{
+    position:absolute;inset:0;
+    background:rgba(0,0,0,0.88);
+  }
+  .card-result-primary{
+    position:relative;z-index:1;
+    font-family:'Futura Std','Barlow Condensed','Oswald',sans-serif;
+    font-size:clamp(28px,4vw,52px);font-weight:900;
+    letter-spacing:1px;text-transform:uppercase;line-height:1;
+    color:#fff;text-shadow:0 0 30px currentColor;
+  }
+  .card-result-primary.pos{color:#00e676;}
+  .card-result-primary.neg{color:#ff1744;}
+  .card-result-primary.neu{color:#f5a623;}
+  .card-result-score{
+    position:relative;z-index:1;
+    font-family:'Futura Std','Barlow Condensed','Oswald',sans-serif;
+    font-size:16px;font-weight:600;letter-spacing:2px;
+    color:#888;text-transform:uppercase;
+  }
+
+  /* ── Escalator slide animation ────────────────────────────────────────── */
+  @keyframes slideDown{
+    from{opacity:0;transform:translateY(-22px);}
+    to{opacity:1;transform:translateY(0);}
+  }
+  @keyframes slideUp{
+    from{opacity:0;transform:translateY(22px);}
+    to{opacity:1;transform:translateY(0);}
+  }
+  .pcard.slide-in{animation:slideDown 0.35s cubic-bezier(0.22,1,0.36,1) both;}
+  .pcard.slide-up{animation:slideUp 0.35s cubic-bezier(0.22,1,0.36,1) both;}
+
+  /* ── Accordion (full roster) ─────────────────────────────────────────── */
+  .accordion{margin:8px 8px 16px 8px;border:1px solid var(--border);overflow:hidden;}
+  .accordion-hdr{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:8px 12px;background:var(--surface2);cursor:pointer;
+    font-family:'Futura Std','Oswald',sans-serif;font-size:11px;
+    font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);
+    border:none;width:100%;text-align:left;transition:background 0.15s;
+  }
+  .accordion-hdr:hover{background:var(--surface);color:#ccc;}
+  .accordion-hdr .acc-arrow{transition:transform 0.2s;font-size:10px;}
+  .accordion-hdr.open .acc-arrow{transform:rotate(90deg);}
+  .accordion-body{display:none;padding:8px;}
+  .accordion-body.open{display:block;}
+  .acc-card{
+    background:var(--surface);border:1px solid var(--border);
+    border-left:3px solid #333;
+    margin-bottom:5px;padding:6px 10px;
+    display:flex;align-items:center;gap:10px;
+  }
+  .t-panel.vis .acc-card{border-left-color:var(--vis-primary);}
+  .t-panel.hom .acc-card{border-left-color:var(--hom-primary);}
+  .acc-uni{
+    font-family:'Futura Std','Oswald',sans-serif;
+    font-size:18px;font-weight:800;color:#555;width:36px;text-align:center;flex-shrink:0;
+  }
+  .t-panel.vis .acc-card .acc-uni{color:color-mix(in srgb,var(--vis-primary) 50%,#333);}
+  .t-panel.hom .acc-card .acc-uni{color:color-mix(in srgb,var(--hom-primary) 50%,#333);}
+  .acc-info{flex:1;min-width:0;}
+  .acc-name{
+    font-family:'Futura Std','Oswald',sans-serif;
+    font-size:13px;font-weight:700;letter-spacing:1px;
+    text-transform:uppercase;color:#888;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .acc-ofer{
+    font-family:'Futura Std','Oswald',sans-serif;
+    font-size:11px;color:#555;margin-top:1px;
+    text-transform:uppercase;
+  }
+  .acc-ofer.pos{color:#2a7a4f;}
+  .acc-ofer.neg{color:#6b1a1a;}
+  .acc-pos{
+    font-family:'Futura Std','Oswald',sans-serif;
+    font-size:10px;font-weight:600;color:#555;
+    text-transform:uppercase;letter-spacing:1px;flex-shrink:0;
+  }
+  .acc-copy{
+    background:transparent;border:1px solid #333;color:#555;
+    font-family:'Futura Std','Oswald',sans-serif;
+    font-size:9px;font-weight:700;padding:3px 7px;
+    cursor:pointer;letter-spacing:1px;text-transform:uppercase;
+    flex-shrink:0;transition:all 0.15s;
+  }
+  .acc-copy:hover{border-color:#888;color:#ccc;}
+  .acc-copy.ok{background:var(--green);border-color:var(--green);color:#000;}
 
   ::-webkit-scrollbar{width:3px;}
   ::-webkit-scrollbar-track{background:var(--bg);}
@@ -351,48 +675,130 @@
 </head>
 <body>
 
+<!-- Inning Summary Overlay -->
+<div class="inning-summary" id="inningSummary">
+  <div class="inn-sum-header" style="pointer-events:all;">
+    <span class="inn-sum-title" id="innSumTitle">END OF 3RD</span>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span class="inn-sum-team" id="innSumTeam"></span>
+      <button onclick="hideInningSummary()" style="background:none;border:none;color:#666;font-size:22px;cursor:pointer;line-height:1;padding:0 4px;" title="Close">✕</button>
+    </div>
+  </div>
+  <div class="inn-sum-counts">
+    <div class="inn-sum-count">
+      <div class="inn-sum-count-val runs" id="innSumRuns">0</div>
+      <div class="inn-sum-count-lbl">RUNS</div>
+    </div>
+    <div class="inn-sum-count">
+      <div class="inn-sum-count-val" id="innSumHits">0</div>
+      <div class="inn-sum-count-lbl">HITS</div>
+    </div>
+    <div class="inn-sum-count">
+      <div class="inn-sum-count-val" id="innSumLob">0</div>
+      <div class="inn-sum-count-lbl">LOB</div>
+    </div>
+  </div>
+  <div class="inn-sum-plays" id="innSumPlays"></div>
+</div>
+
+<!-- Side menu overlay -->
+<div class="side-menu-overlay" id="menuOverlay" onclick="closeMenu()"></div>
+
+<!-- Slide-out side menu -->
+<div class="side-menu" id="sideMenu">
+  <div class="side-menu-header">
+    <span class="side-menu-title">ESPN 0-Fer</span>
+    <button class="side-menu-close" onclick="closeMenu()">✕</button>
+  </div>
+  <div class="side-menu-body">
+    <div class="menu-section-label">File</div>
+    <button class="menu-btn" onclick="browseFile()">
+      <span class="menu-icon">📂</span> Select XML File
+    </button>
+    <input type="file" id="xmlFallbackInput" accept=".xml" class="menu-file-input" onchange="onFallbackFile(this)">
+    <button class="menu-btn red" id="saveOutputBtn" onclick="saveOutput()" disabled style="opacity:0.4;cursor:not-allowed;">
+      <span class="menu-icon">💾</span> Save Output File
+    </button>
+    <div class="menu-divider"></div>
+    <div class="menu-section-label">Colors</div>
+    <div style="display:flex;align-items:center;gap:10px;padding:4px 0;">
+      <span class="color-picker-label" style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;flex:1;">AWAY</span>
+      <span class="team-name-badge" id="visColorLabel" style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#888;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">—</span>
+      <input type="color" class="team-color-swatch" id="visColorPicker" value="#13B5EA" oninput="onColorPick('vis', this.value)">
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;padding:4px 0;">
+      <span class="color-picker-label" style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;flex:1;">HOME</span>
+      <span class="team-name-badge" id="homColorLabel" style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#888;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">—</span>
+      <input type="color" class="team-color-swatch" id="homColorPicker" value="#6CADDE" oninput="onColorPick('hom', this.value)">
+    </div>
+    <div class="menu-divider"></div>
+    <div class="menu-section-label">Display</div>
+    <div style="display:flex;align-items:center;gap:10px;padding:4px 0;">
+      <span style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;flex:1;">FONT SIZE</span>
+      <input type="range" id="fontSizeSlider" min="80" max="130" value="100"
+        oninput="applyFontSize(this.value)"
+        style="flex:2;accent-color:var(--espn-red);cursor:pointer;">
+      <span id="fontSizeLabel" style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#888;width:32px;text-align:right;">100%</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;padding:4px 0;">
+      <span style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;flex:1;">THEME</span>
+      <button onclick="toggleTheme()" id="themeBtn" class="menu-btn" style="flex:2;padding:6px 10px;font-size:11px;">
+        🌙 DARK MODE
+      </button>
+    </div>
+    <div class="menu-divider"></div>
+    <div class="menu-section-label">Keyboard Shortcuts</div>
+    <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#666;line-height:2;padding:4px 0;">
+      <div><span style="color:#f5a623;min-width:28px;display:inline-block;">1-9</span> Copy that batting spot</div>
+      <div><span style="color:#f5a623;min-width:28px;display:inline-block;">C</span> Copy all stat lines</div>
+      <div><span style="color:#f5a623;min-width:28px;display:inline-block;">M</span> Manual override on batter</div>
+      <div><span style="color:#f5a623;min-width:28px;display:inline-block;">DBL</span> Double-click name = note</div>
+    </div>
+    <div class="menu-divider"></div>
+    <div class="menu-section-label">Instructions</div>
+    <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#555;line-height:1.9;padding:4px 0;">
+      <div>1. SELECT XML FILE to begin</div>
+      <div>2. SAVE OUTPUT FILE to write</div>
+      <div>&nbsp;&nbsp;&nbsp;Xpression Datalinq XML</div>
+      <div>3. Dashboard auto-refreshes</div>
+      <div>&nbsp;&nbsp;&nbsp;every 10 seconds</div>
+      <div>4. Double-click player name</div>
+      <div>&nbsp;&nbsp;&nbsp;to override stat line</div>
+    </div>
+    <div class="menu-divider"></div>
+    <div class="menu-section-label">Status</div>
+    <div style="display:flex;align-items:center;gap:8px;padding:4px 0;">
+      <span class="sdot" id="sdot"></span>
+      <span id="statusTxt" style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;">SELECT XML FILE TO BEGIN</span>
+    </div>
+    <span class="timer-txt" id="timerTxt" style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--muted);"></span>
+    <span class="file-name" id="fileName" style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#444;margin-top:4px;word-break:break-all;">No file selected</span>
+  </div>
+</div>
+
 <header>
   <div class="hdr-l">
+    <button class="hamburger" onclick="openMenu()" title="Menu">
+      <span></span><span></span><span></span>
+    </button>
     <div class="espn-badge">ESPN</div>
     <div style="display:flex;flex-direction:column;gap:1px;">
       <div class="hdr-title">0-FER Dashboard</div>
-      <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#555;letter-spacing:2px;">ESPN-0Fers V1</div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#555;letter-spacing:2px;">ESPN-0Fers V5</div>
     </div>
     <div class="live-pill" id="livePill"><span class="live-dot"></span>LIVE</div>
   </div>
   <div class="hdr-r">
-    <span class="timer-txt" id="timerTxt"></span>
     <button class="btn ghost" id="refreshBtn" style="display:none" onclick="doRefresh()">↻ REFRESH</button>
   </div>
 </header>
 
-<div class="load-bar">
-  <span class="load-lbl">XML FILE</span>
-  <div class="file-wrap">
-    <label class="file-btn" id="fileBtn" for="xmlFallbackInput">📂 BROWSE TO LIVE XML...</label>
-    <input type="file" id="xmlFallbackInput" accept=".xml" style="position:fixed;top:-9999px;left:-9999px;opacity:0;" onchange="onFallbackFile(this)">
-  </div>
-  <span class="file-name" id="fileName">e.g. \\sb-venus-p\xml\2026.xml</span>
-  <div class="color-picker-group">
-    <span class="color-picker-label">AWAY</span>
-    <span class="team-name-badge" id="visColorLabel">—</span>
-    <input type="color" class="team-color-swatch" id="visColorPicker" value="#13B5EA" oninput="onColorPick('vis', this.value)" title="Away team color">
-  </div>
-  <div class="color-picker-group">
-    <span class="color-picker-label">HOME</span>
-    <span class="team-name-badge" id="homColorLabel">—</span>
-    <input type="color" class="team-color-swatch" id="homColorPicker" value="#6CADDE" oninput="onColorPick('hom', this.value)" title="Home team color">
-  </div>
-  <div class="status-chip">
-    <span class="sdot" id="sdot"></span>
-    <span id="statusTxt">SELECT XML FILE TO BEGIN</span>
-  </div>
-</div>
-
 <div class="team-tabs" id="teamTabs">
-  <button class="team-tab both active" onclick="setTab('both')">BOTH TEAMS</button>
-  <button class="team-tab vis" id="tabVis" onclick="setTab('vis')">AWAY</button>
-  <button class="team-tab hom" id="tabHom" onclick="setTab('hom')">HOME</button>
+  <button class="team-tab both active" onclick="setTab('both', true)">BOTH TEAMS</button>
+  <button class="team-tab vis" id="tabVis" onclick="setTab('vis', true)">AWAY</button>
+  <button class="team-tab hom" id="tabHom" onclick="setTab('hom', true)">HOME</button>
+  <button class="team-tab" id="tabPbp" onclick="setTab('pbp', true)">PLAY-BY-PLAY</button>
+  <button class="team-tab" id="tabCard" onclick="setTab('card', true)">SCORECARD</button>
 </div>
 
 <div class="score-bar" id="scoreBar">
@@ -407,7 +813,16 @@
     <div class="score-mid">
       <div class="inn-badge" id="innBadge">—</div>
       <div class="count-txt" id="countTxt"></div>
+      <!-- Bases diamond -->
+      <svg id="basesDiamond" width="44" height="44" viewBox="0 0 44 44" style="display:none;margin:2px auto;">
+        <!-- Base positions: 2B top, 1B right, 3B left, home bottom -->
+        <rect id="base2" x="17" y="2"  width="10" height="10" rx="2" fill="#333" transform="rotate(45 22 7)"/>
+        <rect id="base1" x="32" y="17" width="10" height="10" rx="2" fill="#333" transform="rotate(45 37 22)"/>
+        <rect id="base3" x="2"  y="17" width="10" height="10" rx="2" fill="#333" transform="rotate(45 7 22)"/>
+        <rect id="baseH" x="17" y="32" width="10" height="10" rx="2" fill="#555" transform="rotate(45 22 37)"/>
+      </svg>
       <div class="at-bat-txt" id="atBatTxt"></div>
+      <div id="pitchCountTxt" style="font-family:'Share Tech Mono',monospace;font-size:11px;color:#666;letter-spacing:1px;text-align:center;margin-top:2px;"></div>
     </div>
     <div class="score-side hom">
       <div class="s-score-num" id="homRuns">0</div>
@@ -433,6 +848,12 @@
         REFRESHES EVERY 10 SECONDS
       </div>
     </div>
+    <div class="accordion" id="visRosterAcc" style="display:none;">
+      <button class="accordion-hdr" id="visRosterAccLabel" onclick="toggleAcc(this)">
+        ▶ FULL ROSTER <span class="acc-arrow">›</span>
+      </button>
+      <div class="accordion-body" id="visRosterAccBody"></div>
+    </div>
   </div>
   <div class="t-panel hom" id="homPanel">
     <div class="t-hdr">
@@ -445,6 +866,24 @@
         SELECT FILE ON LEFT<br>TO POPULATE LIVE STATS
       </div>
     </div>
+    <div class="accordion" id="homRosterAcc" style="display:none;">
+      <button class="accordion-hdr" id="homRosterAccLabel" onclick="toggleAcc(this)">
+        ▶ FULL ROSTER <span class="acc-arrow">›</span>
+      </button>
+      <div class="accordion-body" id="homRosterAccBody"></div>
+    </div>
+  </div>
+  <!-- Play-by-play panel -->
+  <div class="t-panel pbp-panel" id="pbpPanel" style="display:none;grid-column:1/-1;">
+    <div class="t-hdr"><span class="t-hdr-name">PLAY-BY-PLAY</span></div>
+    <div id="pbpList" style="padding:8px;font-family:'Share Tech Mono',monospace;font-size:11px;
+         line-height:2;overflow-y:auto;max-height:calc(100vh - 220px);"></div>
+  </div>
+
+  <!-- Scorecard panel -->
+  <div class="t-panel card-panel" id="cardPanel" style="display:none;grid-column:1/-1;overflow-x:auto;">
+    <div class="t-hdr"><span class="t-hdr-name">SCORECARD</span></div>
+    <div id="scorecardWrap" style="padding:8px;min-width:700px;"></div>
   </div>
 </div>
 
@@ -844,40 +1283,65 @@ let gameLabel  = 'TONIGHT'; // set from XML start time
 let fileHandle      = null;
 let fallbackFile    = null;
 let colorsLockedFor = null;
+let prevBatter      = '';   // previous batter for change detection
+window._manualOverrides = window._manualOverrides || {};
+let prevInning      = '';   // previous inning number for change detection
+let prevTopBot      = '';   // previous half-inning side
+let inningSummaryShowing = false;
+let prevBatterSide  = '';   // which side (vis/hom) prev batter was on
+let flashTimer      = null; // result flash timeout handle
 
-function browseFile() { /* label triggers input natively — no JS needed */ }
+async function browseFile() {
+  // On https:// use File System Access API — persistent handle, truly live re-reads
+  // On http:// or file:// fall back to standard input
+  if (window.location.protocol === 'https:' && typeof window.showOpenFilePicker === 'function') {
+    try {
+      const [handle] = await window.showOpenFilePicker({
+        types: [{ description: 'XML Files', accept: { 'text/xml': ['.xml'] } }],
+        multiple: false
+      });
+      fileHandle   = handle;
+      fallbackFile = null;
+      colorsLockedFor = null;
+      userPickedTab   = false;
+      const file = await handle.getFile();
+      setFileName(file.name);
+      closeMenu();
+      await readXML();
+      startAutoRefresh();
+    } catch(e) {
+      if (e.name !== 'AbortError') setStat('err', 'COULD NOT OPEN FILE');
+    }
+  } else {
+    // Fallback — standard file input (snapshot only)
+    document.getElementById('xmlFallbackInput').click();
+  }
+}
 
 function onFallbackFile(input) {
   if (!input.files || !input.files[0]) return;
   fallbackFile    = input.files[0];
-  fileHandle      = null; // clear any old FSA handle
+  fileHandle      = null;
   colorsLockedFor = null;
-  const btn = document.getElementById('fileBtn');
-  if (btn) { btn.style.borderColor = ''; btn.style.color = ''; }
+  userPickedTab   = false;
   setFileName(fallbackFile.name);
-  document.getElementById('refreshBtn').style.display = 'inline-block';
+  closeMenu(); // close the side menu after selection
   readXML();
   startAutoRefresh();
-  // Opportunistically try to get an FSA handle for live re-reads
-  // This is silent — if it fails, fallbackFile snapshot is used instead
-  if (typeof window.showOpenFilePicker === 'function') {
-    window.showOpenFilePicker({
-      types: [{ description: 'XML Files', accept: { 'text/xml': ['.xml'] } }],
-      multiple: false,
-      startIn: fallbackFile
-    }).then(([handle]) => {
-      fileHandle = handle;
-      console.log('FSA handle acquired — live re-reads enabled');
-    }).catch(() => {
-      console.log('FSA not available — using snapshot mode');
-    });
-  }
+  // Fallback path — snapshot only (used on http:// or unsupported browsers)
 }
 
 function setFileName(name) {
-  document.getElementById('fileName').textContent = name;
-  document.getElementById('fileBtn').textContent  = '📂 ' + name;
-  document.getElementById('refreshBtn').style.display = 'inline-block';
+  const fn = document.getElementById('fileName');
+  if (fn) fn.textContent = name;
+  // Update the label text safely without breaking the for= binding
+  const btn = document.getElementById('fileBtn');
+  if (btn) btn.innerHTML = '📂 ' + name.substring(0, 25) + (name.length > 25 ? '…' : '');
+  const rb = document.getElementById('refreshBtn');
+  if (rb) rb.style.display = 'inline-block';
+  // Enable the save button once a file is loaded
+  const sb = document.getElementById('saveOutputBtn');
+  if (sb) { sb.disabled = false; sb.style.opacity = '1'; sb.style.cursor = 'pointer'; }
 }
 
 function startAutoRefresh() {
@@ -934,8 +1398,9 @@ async function readXML() {
       if (btn) {
         btn.style.borderColor = '#d00';
         btn.style.color = '#d00';
-        btn.textContent = '⚠ RE-SELECT ' + fname;
+        btn.innerHTML = '⚠ RE-SELECT ' + fname;
       }
+      openMenu(); // open side menu so operator can re-select easily
     }
   }
 }
@@ -988,6 +1453,85 @@ function parseGame(xmlText) {
     const strikes  = status?.getAttribute('s')        || '0';
     const curBtr   = status?.getAttribute('batter')   || '';
 
+    // Build last-play map — supports both <batter> element format AND narrative-only format
+    const lastPlayMap = {};
+    xml.querySelectorAll('play').forEach(play => {
+      const bEl      = play.querySelector('batter');
+      const bName    = play.getAttribute('batter') || '';
+      const narrative= play.querySelector('narrative');
+      const narrText = narrative ? narrative.getAttribute('text') : '';
+
+      let action = '', decision = '', desc = '';
+
+      if (bEl) {
+        // Format A: has <batter> element with action/decision attributes
+        const ab_v = parseInt(bEl.getAttribute('ab') || '0');
+        action   = bEl.getAttribute('action')   || '';
+        decision = bEl.getAttribute('decision') || '';
+        desc     = bEl.getAttribute('wheredesc') || '';
+        // Skip non-PA plays (runner/sub plays with batter element but no real PA)
+        if (ab_v < 1 && !action && !decision) return;
+      } else if (narrText && bName) {
+        // Format B: narrative-only — parse from text
+        // Skip runner/substitution plays (no real PA)
+        const narrLower = narrText.toLowerCase();
+        // Strip runner info after semicolon BEFORE checking skip conditions.
+        const narrMain = narrLower.split(';')[0].trim();
+        const isRunnerPlay = (
+          narrMain.includes(' stole ') ||
+          /\bscored\b/.test(narrMain) ||
+          narrLower.includes('picked off') ||
+          narrLower.includes('no play') ||
+          narrLower.includes('mound visit') ||
+          narrLower.includes('offensive timeout') ||
+          narrLower.includes('defensive timeout') ||
+          narrLower.includes(' to p for ') ||
+          narrLower.includes('pinch hit') ||
+          narrLower.includes('pinch ran') ||
+          // Sub to DH, PH, PR positions
+          isSub(narrText)
+        );
+        // Skip if narrative doesn't start with the batter's name
+        const bLast = bName.split(',')[0].toLowerCase();
+        const startsWithBatter = narrLower.startsWith(bName.toLowerCase()) ||
+          narrLower.startsWith(bLast);
+        if (isRunnerPlay || !startsWithBatter) return;
+
+        const parsed = parseNarrativeAction(narrText, bName);
+        if (!parsed) return;
+        action   = parsed.action;
+        decision = parsed.decision;
+        desc     = parsed.desc;
+      } else {
+        return; // nothing to work with
+      }
+
+      if (bName && (action || decision)) {
+        const outEl  = bEl ? bEl.getAttribute('out')    : (action === 'K' || action === 'G' || action === 'F' || action === 'P' || action === 'GDP' ? '1' : '0');
+        const roeEl  = bEl ? bEl.getAttribute('rcherr') : (action === 'E' ? '1' : '0');
+        const paRbi  = bEl ? parseInt(bEl.getAttribute('rbi') || '0') : 0;
+        // Store under all name variants
+        nameKeys(bName).forEach(function(k) { lastPlayMap[k] = lastPlayMap[k] || {}; });
+        const _lpmKey = bName.toLowerCase().trim();
+        lastPlayMap[_lpmKey] = {
+          action, decision, desc,
+          isOut: outEl === '1',
+          isRoe: roeEl === '1',
+          paRbi
+        };
+        // hrRbiMap: persist HR per-PA RBI separately (survives subsequent PAs)
+        if ((action === 'HR' || decision === 'HR') && bEl) {
+          window._hrRbiMap = window._hrRbiMap || {};
+          nameKeys(bName).forEach(function(k) {
+            window._hrRbiMap[k] = paRbi;
+          });
+        }
+      }
+    });
+    window._lastPlayMap = lastPlayMap;
+
+
+
     // Players
     const visPlayers = parsePlayers(visTeam);
     const homPlayers = parsePlayers(homTeam);
@@ -995,7 +1539,7 @@ function parseGame(xmlText) {
     // ── Paint ──
     setText('visSchool', visName); setText('visHdr', visName);
     setText('homSchool', homName); setText('homHdr', homName);
-    updateTabs(visName, homName);
+    updateTabs(visName, homName, topBot);
     setText('visRuns', visLS?.getAttribute('runs') ?? '0');
     setText('homRuns', homLS?.getAttribute('runs') ?? '0');
     setText('visHits', `${visLS?.getAttribute('hits') ?? 0} H · ${visLS?.getAttribute('errs') ?? 0} E`);
@@ -1009,8 +1553,96 @@ function parseGame(xmlText) {
     setText('atBatTxt', curBtr ? `AT BAT: ${curBtr}` : '');
 
     document.getElementById('scoreBar').classList.add('on');
-    document.getElementById('livePill').classList.add('on');    renderRoster('visRoster', 'vis', visPlayers, curBtr, topBot === 'V');
-    renderRoster('homRoster', 'hom', homPlayers, curBtr, topBot === 'H');
+    document.getElementById('livePill').classList.add('on');
+
+    // Bases diamond
+    updateBasesDiamond(status);
+
+    // Pitch count from status element
+    const pitchEl = xml.querySelector('status');
+    const pitches = pitchEl?.getAttribute('pitches') || pitchEl?.getAttribute('pc') || '';
+    const pcTxt = document.getElementById('pitchCountTxt');
+    if (pcTxt) pcTxt.textContent = pitches ? 'PITCHES: ' + pitches : '';
+
+    window._lastVisPlayers = visPlayers;
+    window._lastHomPlayers = homPlayers;
+    window._lastXml        = xml;
+    window._lastVisName    = visName;
+    window._lastHomName    = homName;
+
+    // ── Batter change detection: show result flash + escalator animation ──
+    const battingSidePlayers = topBot === 'V' ? visPlayers : homPlayers;
+
+    // Only fire flash when batter changes WITHIN the same half-inning
+    // Don't flash on half-inning flips (last batter of previous half)
+    // or on full inning changes (new inning same side)
+    const halfChanged    = topBot !== prevTopBot;
+    const batterChanged  = curBtr && prevBatter && curBtr !== prevBatter && !halfChanged;
+
+    if (batterChanged) {
+      // The previous batter just finished their PA — show their result
+      const result = getAtBatResult(
+        prevBatterSide === 'V' ? visPlayers : homPlayers,
+        prevBatter
+      );
+      if (result) {
+        showResultFlash(result, prevBatterSide);
+        // Delay escalator render by 3s to let flash play first
+        const capturedBtr   = curBtr;
+        const capturedTopBot = topBot;
+        setTimeout(() => {
+          renderRoster('visRoster', 'vis', visPlayers, capturedBtr, capturedTopBot === 'V', true);
+          renderRoster('homRoster', 'hom', homPlayers, capturedBtr, capturedTopBot === 'H', true);
+        }, 2800);
+      } else {
+        renderRoster('visRoster', 'vis', visPlayers, curBtr, topBot === 'V', true);
+        renderRoster('homRoster', 'hom', homPlayers, curBtr, topBot === 'H', true);
+      }
+    } else {
+      renderRoster('visRoster', 'vis', visPlayers, curBtr, topBot === 'V', false);
+      renderRoster('homRoster', 'hom', homPlayers, curBtr, topBot === 'H', false);
+    }
+
+    prevBatter     = curBtr;
+    prevBatterSide = topBot;
+
+    // ── Inning summary trigger ────────────────────────────────────────────
+    const halfKey = inning + topBot;
+    if (outs === '3' && !complete && !inningSummaryShowing) {
+      // 3rd out just recorded — show inning summary for the batting team
+      const summaryData = buildInningSummary(xml, topBot, parseInt(inning), topBot);
+      showInningSummary(summaryData);
+    } else if (inningSummaryShowing && halfKey !== (prevInning + prevTopBot)) {
+      // Half inning flipped — hide summary and switch to batting team
+      hideInningSummary();
+    }
+
+    prevInning = inning;
+    prevTopBot = topBot;
+
+    // Auto-write output XML on every refresh if file handle is set
+    if (outputFileHandle) writeOutputFile();
+
+    // Re-render active special tab
+    if (activeTab === 'pbp')  renderPbp();
+    if (activeTab === 'card') renderScorecard();
+
+    // Scoring strip
+    updateScoringStrip(xml, visName, homName, parseInt(inning));
+
+    // Store current BA for trend comparison next refresh
+    window._prevAvgs = window._prevAvgs || {};
+    [...visPlayers, ...homPlayers].forEach(p => {
+      const key = 'prevAvg_' + p.uni + '_' + (visPlayers.includes(p) ? 'vis' : 'hom');
+      if (p.savg) window._prevAvgs[key] = parseFloat(p.savg) || 0;
+    });
+
+    // Auto-backup output XML when inning changes
+    const currentHalfKey = inning + topBot;
+    if (outputFileHandle && currentHalfKey !== window._lastBackupHalf) {
+      window._lastBackupHalf = currentHalfKey;
+      autoBackupOutput(inning, topBot);
+    }
 
     setStat('ok', `UPDATED ${new Date().toLocaleTimeString()} · ${visName} vs ${homName}`);
   } catch(e) {
@@ -1020,52 +1652,339 @@ function parseGame(xmlText) {
 }
 
 function parsePlayers(teamEl) {
+  // ── Step 1: Build current batord map (shortname → spot) ─────────────────
+  // batord = who is CURRENTLY in each lineup spot right now
+  const currentBatord = {}; // spot → shortname (e.g. "McCoy,James")
+  teamEl.querySelectorAll('batord').forEach(b => {
+    const spot = b.getAttribute('spot');
+    const name = b.getAttribute('name');
+    if (spot && name) currentBatord[spot] = name.toLowerCase().trim();
+  });
+
   const list = [];
   teamEl.querySelectorAll('player').forEach(p => {
     const spot = n(p.getAttribute('spot'));
     const gp   = n(p.getAttribute('gp'));
-    if (spot === 0 && gp === 0) return;
-      if (spot > 9) return; // only show batting order spots 1-9
+    if (spot === 0 && gp === 0) return; // never appeared, skip
 
-    const hit = p.querySelector('hitting');
-    const sea = p.querySelector('hitseason');
-    const h   = n(hit?.getAttribute('h'));
-    const d   = n(hit?.getAttribute('double'));
-    const t   = n(hit?.getAttribute('triple'));
-    const hr  = n(hit?.getAttribute('hr'));
+    const hit  = p.querySelector('hitting');
+    const sea  = p.querySelector('hitseason');
+    const h    = n(hit?.getAttribute('h'));
+    const d    = n(hit?.getAttribute('double'));
+    const t    = n(hit?.getAttribute('triple'));
+    const hr   = n(hit?.getAttribute('hr'));
+    // Flag: does this XML provide explicit hit-type breakdowns?
+    // If not, s is derived (h-d-t-hr) and may not reflect actual singles
+    const hasHitTypes = !!(hit?.getAttribute('double') || hit?.getAttribute('single'));
+    const ab   = n(hit?.getAttribute('ab'));
+    const bb   = n(hit?.getAttribute('bb'));
+    const hbp  = n(hit?.getAttribute('hbp'));
+    const sf   = n(hit?.getAttribute('sf'));
+    const short= (p.getAttribute('shortname') || '').toLowerCase().trim();
+    const name = p.getAttribute('name') || '';
+
+    // ── Step 2: Determine effective spot ─────────────────────────────────
+    // A player is "currently in the lineup" if their shortname appears in
+    // the current batord for spots 1-9. If not, they've been subbed out.
+    let effectiveSpot = spot;
+    if (spot >= 1 && spot <= 9) {
+      const batordName = currentBatord[String(spot)] || '';
+      // Check if this player is still the current occupant of their spot
+      const isCurrentOccupant = batordName === short ||
+        batordName.includes(short.split(',')[0]) ||
+        short.includes(batordName.split(',')[0]);
+      if (!isCurrentOccupant) {
+        // This player has been replaced — move to accordion
+        effectiveSpot = 0;
+      }
+    }
 
     list.push({
-      name : p.getAttribute('name')      || '',
-      short: p.getAttribute('shortname') || '',
+      name, short,
       uni  : p.getAttribute('uni')       || '',
       pos  : (p.getAttribute('atpos') || p.getAttribute('pos') || '').toUpperCase(),
-      spot,
-      ab  : n(hit?.getAttribute('ab')),
-      h,
+      gp,
+      spot : effectiveSpot,
+      ab, h,
       r   : n(hit?.getAttribute('r')),
       rbi : n(hit?.getAttribute('rbi')),
       so  : n(hit?.getAttribute('so')),
-      bb  : n(hit?.getAttribute('bb')),
+      bb, hbp, sf,
       s   : Math.max(0, h - d - t - hr),
       d, t, hr,
+      hasHitTypes,
       sb  : n(hit?.getAttribute('sb')),
-      sf  : n(hit?.getAttribute('sf')),
       gidp: n(hit?.getAttribute('gdp') || hit?.getAttribute('gidp')),
       roe : n(hit?.getAttribute('roe')),
       savg: sea?.getAttribute('avg') || '',
       shr : n(sea?.getAttribute('hr')),
       srbi: n(sea?.getAttribute('rbi')),
-
+      sbb : n(sea?.getAttribute('bb')),
+      sso : n(sea?.getAttribute('so')),
     });
   });
-  // Base sort by batting spot
+
+  // Sort: spots 1-9 first (in order), then accordion players
   list.sort((a,b) => {
-    if (a.spot===0 && b.spot===0) return 0;
-    if (a.spot===0) return 1;
-    if (b.spot===0) return -1;
-    return a.spot - b.spot;
+    if (a.spot>=1 && a.spot<=9 && b.spot>=1 && b.spot<=9) return a.spot - b.spot;
+    if (a.spot>=1 && a.spot<=9) return -1;
+    if (b.spot>=1 && b.spot<=9) return 1;
+    return 0;
   });
   return list;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// NARRATIVE TEXT → ACTION + DESCRIPTION
+// Parses StatBroadcast narrative strings when no <batter> element exists
+// e.g. "Smith hit by pitch (1-1 BK)" → { action:'HBP', decision:'HBP', desc:'' }
+// ════════════════════════════════════════════════════════════════════════════
+function parseNarrativeAction(narrative, batterName) {
+  if (!narrative) return null;
+  var text = narrative.trim();
+  // Strip batter name variants from start
+  var bLast = batterName.indexOf(',') > -1
+    ? batterName.split(',')[0].trim()
+    : (batterName.indexOf(' ') > -1 ? batterName.split(' ').pop() : batterName);
+  var nameVariants = [batterName, bLast];
+  for (var nv of nameVariants) {
+    if (nv && text.toLowerCase().startsWith(nv.toLowerCase())) {
+      text = text.substring(nv.length).trim(); break;
+    }
+  }
+  // Strip count/pitch sequence in parens, RBI/runner info after semicolon, trailing punct
+  text = text.replace(/\s*\([^)]*\)\s*[;.]?\s*$/, '').trim();
+  text = text.replace(/\s*;.*$/, '').trim();
+  text = text.replace(/[.,;]+$/, '').trim();
+  var t = text.toLowerCase();
+
+  // ── Strikeouts ────────────────────────────────────────────────────────────
+  if (/struck out/.test(t))                  return { action:'K',   decision:'K',   desc:'' };
+
+  // ── Reached base ──────────────────────────────────────────────────────────
+  if (/hit by pitch/.test(t))                return { action:'HBP', decision:'HBP', desc:'' };
+  if (/was intentionally walked/.test(t))    return { action:'IBB', decision:'IBB', desc:'' };
+  if (/intentional(ly)? walk/.test(t))       return { action:'IBB', decision:'IBB', desc:'' };
+  if (/walked/.test(t))                      return { action:'BB',  decision:'BB',  desc:'' };
+  if (/reached on a fielder.s choice/.test(t)) return { action:'FC', decision:'FC', desc:'' };
+  // "reached first on a fielding/throwing error" and variants
+  // All "reached ... error/muffed" variants
+  if (/reached.*(error|fielding error|throwing error|muffed)/.test(t)) return { action:'E', decision:'E', desc:'' };
+  // Batter's interference = out
+  if (/batter.s interference/.test(t)) return { action:'K', decision:'K', desc:'' };
+
+  // ── Hits ──────────────────────────────────────────────────────────────────
+  if (/homered/.test(t)) {
+    var loc = t.replace(/.*homered\s*(to\s*)?/,'').replace(/,.*$/,'').trim();
+    return { action:'HR', decision:'HR', desc: loc };
+  }
+  if (/tripled/.test(t)) {
+    var loc = t.replace(/.*tripled\s*(down|to|through|up|into|,)?\s*/,'').replace(/,.*$/,'').trim();
+    return { action:'3B', decision:'3B', desc: loc };
+  }
+  if (/doubled/.test(t)) {
+    // "doubled, out at third" = batter doubled but was thrown out stretching — still a 2B hit
+    var loc = t.replace(/.*doubled\s*(down|to|through|up|into|,)?\s*/,'').replace(/,.*$/,'').trim();
+    return { action:'2B', decision:'2B', desc: loc };
+  }
+  if (/singled/.test(t)) {
+    var loc = t.replace(/.*singled\s*(to|through|up|down|into|,)?\s*/,'').replace(/,.*$/,'').trim();
+    return { action:'1B', decision:'1B', desc: loc };
+  }
+  // Bunt single: "singled, bunt"
+  if (/bunt/.test(t) && /(single|hit)/.test(t)) return { action:'1B', decision:'1B', desc:'bunt' };
+
+  // ── Outs ──────────────────────────────────────────────────────────────────
+  if (/grounded into double play/.test(t))   return { action:'GDP', decision:'GDP', desc:'' };
+  if (/lined into double play/.test(t))       return { action:'GDP', decision:'GDP', desc:'' };
+  if (/infield fly/.test(t)) {
+    var loc = t.replace(/infield fly\s*(to\s*)?/,'').replace(/,.*$/,'').trim();
+    return { action:'P',  decision:'P',  desc: loc ? 'to ' + loc : '' };
+  }
+  if (/grounded out/.test(t)) {
+    var loc = t.replace(/grounded out\s*(to\s*)?/,'').replace(/,.*$/,'').trim();
+    return { action:'G',  decision:'G',  desc: loc ? 'to ' + loc : '' };
+  }
+  if (/flied out/.test(t)) {
+    // Check for sacrifice fly embedded in flyout narrative
+    if (/sacrifice fly|\bsf\b|\bsac\b/.test(t)) return { action:'SF', decision:'SF', desc:'' };
+    var loc = t.replace(/flied out\s*(to\s*)?/,'').replace(/,.*$/,'').trim();
+    return { action:'F',  decision:'F',  desc: loc ? 'to ' + loc : '' };
+  }
+  if (/lined out/.test(t)) {
+    var loc = t.replace(/lined out\s*(to\s*)?/,'').replace(/,.*$/,'').trim();
+    return { action:'F',  decision:'F',  desc: loc ? 'to ' + loc : '' };
+  }
+  if (/fouled out/.test(t)) {
+    var loc = t.replace(/fouled out\s*(to\s*)?/,'').replace(/,.*$/,'').trim();
+    return { action:'F',  decision:'F',  desc: loc ? 'to ' + loc : '' };
+  }
+  if (/popped up/.test(t)) {
+    var loc = t.replace(/popped up\s*(to\s*)?/,'').replace(/,.*$/,'').trim();
+    return { action:'P',  decision:'P',  desc: loc ? 'to ' + loc : '' };
+  }
+  if (/popped out/.test(t)) {
+    var loc = t.replace(/popped out\s*(to\s*)?/,'').replace(/,.*$/,'').trim();
+    return { action:'P',  decision:'P',  desc: loc ? 'to ' + loc : '' };
+  }
+  if (/out at (first|second|third|home)/.test(t)) return { action:'FC', decision:'FC', desc:'' };
+
+  // ── Sacrifices ────────────────────────────────────────────────────────────
+  if (/sacrifice fly/.test(t) || (/\bsf\b/.test(t) && /rbi/.test(t)))
+    return { action:'SF', decision:'SF', desc:'' };
+  if (/sacrifice bunt/.test(t) || (/sac/.test(t) && /bunt/.test(t)) ||
+      (/bunt/.test(t) && /out/.test(t)))
+    return { action:'SH', decision:'SH', desc:'' };
+
+  return null; // couldn't parse
+}
+
+function isSub(narrText) {
+  // Detect substitution/position-change announcements like "Sin, A to dp."
+  // Must NOT match plate appearance plays like "Morris, Mi flied out to cf"
+  var n = narrText.trim().replace(/\([^)]*\)/g,'').trim();
+  n = n.replace(/;.*$/,'').trim().replace(/[. ]+$/,'').trim();
+  var parts = n.split(/\s+/);
+  // If any word before "to" is an action verb, it's a PA not a sub
+  var actionVerbs = {out:1,singled:1,doubled:1,tripled:1,homered:1,walked:1,
+    struck:1,flied:1,lined:1,fouled:1,grounded:1,popped:1,reached:1,
+    hit:1,advanced:1,scored:1,stole:1};
+  var toIdx = -1;
+  for (var i=parts.length-1;i>=0;i--) { if (parts[i].toLowerCase()==='to'){toIdx=i;break;} }
+  if (toIdx < 0) return false;
+  for (var j=0;j<toIdx;j++) { if (actionVerbs[parts[j].toLowerCase().replace(/[.,]/,'')]) return false; }
+  var pos = (parts[toIdx+1]||'').toLowerCase().replace(/[.]/g,'');
+  var validPos = /^(p|c|dh|dp|1b|2b|3b|ss|lf|cf|rf|ph|pr|of|if)$/i;
+  if (toIdx === parts.length-2) return validPos.test(pos);
+  // "to p for Name" pattern
+  if (toIdx+3 <= parts.length && (parts[toIdx+2]||'').toLowerCase()==='for') return validPos.test(pos);
+  return false;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// ACTION CODE → FLASH LABEL
+// Converts StatCrew action codes to human-readable result strings
+// ════════════════════════════════════════════════════════════════════════════
+function actionToLabel(action, desc, decision) {
+  if (!action) return null;
+  const a = action.toUpperCase().trim();
+  const d = (desc || '').toLowerCase();
+
+  // Strikeouts
+  if (a === 'K' || a === 'KL' || a === 'KC') return 'STRIKEOUT';
+
+  // Home runs (handled by ofer text — fallback here)
+  if (a === 'HR') return 'HOME RUN';
+
+  // Hits
+  if (a === '1B') return 'SINGLE';
+  if (a === '2B') return 'DOUBLE';
+  if (a === '3B') return 'TRIPLE';
+
+  // Walk / HBP
+  if (a === 'BB' || a === 'IBB') return 'WALK';
+  if (a === 'HBP') return 'HIT BY PITCH';
+
+  // Sac fly / Sac bunt
+  if (a.startsWith('SF')) return 'SAC FLY';
+  if (a.startsWith('SH')) return 'SAC BUNT';
+
+  // Flyouts — F + position number(s)
+  if (a.startsWith('F') && /^F\d/.test(a)) {
+    const pos = a.substring(1, 2);
+    const posMap = {'1':'P','2':'C','3':'1B','4':'2B','5':'3B','6':'SS','7':'LF','8':'CF','9':'RF'};
+    const fieldName = {'1':'PITCHER','2':'CATCHER','3':'FIRST BASE','4':'SECOND BASE',
+                       '5':'THIRD BASE','6':'SHORTSTOP','7':'LEFT FIELD','8':'CENTER FIELD','9':'RIGHT FIELD'};
+    return d ? 'FLYOUT ' + d.toUpperCase() : 'F' + pos + ' — ' + (fieldName[pos] || pos);
+  }
+
+  // Popups — P + position
+  if (a.startsWith('P') && /^P\d/.test(a)) {
+    const pos = a.substring(1, 2);
+    const fieldName = {'1':'PITCHER','2':'CATCHER','3':'FIRST BASE','4':'SECOND BASE',
+                       '5':'THIRD BASE','6':'SHORTSTOP','7':'LEFT FIELD','8':'CENTER FIELD','9':'RIGHT FIELD'};
+    return d ? 'POPUP ' + d.toUpperCase() : 'POP — ' + (fieldName[pos] || pos);
+  }
+
+  // Groundouts — G + fielder sequence (e.g. G63 = SS to 1B)
+  if (a.startsWith('G') && /^G\d/.test(a)) {
+    const fieldName = {'1':'P','2':'C','3':'1B','4':'2B','5':'3B','6':'SS','7':'LF','8':'CF','9':'RF'};
+    const firstFielder = fieldName[a.charAt(1)] || a.charAt(1);
+    return d ? 'GROUNDOUT ' + d.toUpperCase() : 'GROUNDOUT — ' + firstFielder;
+  }
+
+  // Double plays
+  if (a.startsWith('GDP') || a.startsWith('DP')) return 'GIDP';
+
+  // Fielder's choice
+  if (a === 'FC' || a.startsWith('FC')) return 'FIELDERS CHOICE';
+
+  // Reached on error — decision="E", action like "E3", "E6" etc
+  const dec = (decision || '').toUpperCase().trim();
+  if (a.startsWith('ROE') || dec === 'E' || /^E\d+$/.test(a)) return 'REACHED ON ERROR';
+
+  return null; // unknown — fall back to ofer text
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// BATTER NAME MATCHER
+// Handles all StatCrew XML formats: "Wilson,Evan" / "Wilson, Evan" /
+// "Wilson" / "Evan Wilson" / "Wilson, E" / "Wilson,E." etc.
+// ════════════════════════════════════════════════════════════════════════════
+function matchBatter(curBtr, players) {
+  if (!curBtr || !players || !players.length) return -1;
+
+  function norm(s) {
+    return (s || '').toLowerCase()
+      .replace(/\./g, '')      // remove periods (initials)
+      .replace(/,/g, ' ')      // commas → spaces
+      .replace(/\s+/g, ' ')   // collapse whitespace
+      .trim()
+      .split(' ')
+      .filter(Boolean);
+  }
+
+  const curParts = norm(curBtr);
+  if (!curParts.length) return -1;
+
+  let bestIdx   = -1;
+  let bestScore = 0;
+
+  players.forEach((p, idx) => {
+    const nameParts  = norm(p.name  || '');
+    const shortParts = norm(p.short || '');
+    const allParts   = [...new Set([...nameParts, ...shortParts])];
+
+    // Last name = first token of shortname (StatCrew always "Last,First")
+    const lastName = shortParts[0] || nameParts[0] || '';
+    let score = 0;
+
+    for (const cp of curParts) {
+      if (cp === lastName)                                                score += 10;
+      else if (allParts.includes(cp))                                     score += 5;
+      else if (cp.length === 1 && allParts.some(a => a.startsWith(cp)))  score += 3;
+      else if (allParts.some(a => a.includes(cp) || cp.includes(a)))     score += 1;
+    }
+
+    if (score > bestScore) { bestScore = score; bestIdx = idx; }
+  });
+
+  // Require last-name-level match (score >= 5) to avoid false positives
+  // But also try a direct string fallback in case norm() stripped something important
+  if (bestScore < 5) {
+    const rawCur = (curBtr || '').toLowerCase().replace(/\s+/g,' ').trim();
+    players.forEach((p, idx) => {
+      const rawShort = (p.short || '').toLowerCase().replace(/\s+/g,' ').trim();
+      const rawName  = (p.name  || '').toLowerCase().replace(/\s+/g,' ').trim();
+      if (rawShort === rawCur || rawName === rawCur ||
+          rawShort.startsWith(rawCur.split(/[,\s]/)[0]) ||
+          rawCur.startsWith(rawShort.split(/[,\s]/)[0])) {
+        if (idx !== bestIdx) { bestIdx = idx; bestScore = 10; }
+      }
+    });
+  }
+
+  return bestScore >= 5 ? bestIdx : -1;
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -1076,18 +1995,13 @@ function parsePlayers(teamEl) {
 // ════════════════════════════════════════════════════════════════════════════
 function escalatorSort(players, curBtr, isThisBatting) {
   const lineup = players.filter(p => p.spot >= 1 && p.spot <= 9);
-  const bench  = []; // extras/subs not shown
+  const bench  = []; // bench shown in accordion below
 
   if (!isThisBatting || !curBtr || lineup.length === 0) {
     return [...lineup, ...bench];
   }
 
-  const curIdx = lineup.findIndex(p =>
-    p.short === curBtr ||
-    p.name  === curBtr ||
-    p.short.toLowerCase() === curBtr.toLowerCase() ||
-    p.name.toLowerCase()  === curBtr.toLowerCase()
-  );
+  const curIdx = matchBatter(curBtr, lineup);
 
   if (curIdx === -1) return [...lineup, ...bench];
 
@@ -1099,7 +2013,7 @@ function escalatorSort(players, curBtr, isThisBatting) {
 // ════════════════════════════════════════════════════════════════════════════
 // RENDER
 // ════════════════════════════════════════════════════════════════════════════
-function renderRoster(elId, side, players, curBtr, isThisBatting) {
+function renderRoster(elId, side, players, curBtr, isThisBatting, animate=false) {
   const el = document.getElementById(elId);
   if (!players.length) {
     el.innerHTML = '<div class="empty"><div class="ico">—</div>NO DATA</div>';
@@ -1109,12 +2023,7 @@ function renderRoster(elId, side, players, curBtr, isThisBatting) {
   const ordered = escalatorSort(players, curBtr, isThisBatting);
 
   el.innerHTML = ordered.map((p, idx) => {
-    const isCur = isThisBatting && (
-      p.short === curBtr ||
-      p.name  === curBtr ||
-      p.short.toLowerCase() === curBtr.toLowerCase() ||
-      p.name.toLowerCase()  === curBtr.toLowerCase()
-    );
+    const isCur = isThisBatting && matchBatter(curBtr, [p]) >= 0;
 
     let qLabel = '';
     if (isThisBatting && p.spot > 0) {
@@ -1124,12 +2033,19 @@ function renderRoster(elId, side, players, curBtr, isThisBatting) {
     }
 
     const ofer    = buildOfer(p);
-    const safe    = ofer.text.replace(/'/g,"&#39;").replace(/"/g,"&quot;");
+    // Copy only the detail portion — e.g. "(Solo Home Run, Run)" not "2-3 (Solo Home Run, Run)"
+    const _parenIdx = ofer.text.indexOf('(');
+    const _copyText = (_parenIdx > -1 ? ofer.text.substring(_parenIdx)
+                    : (ofer.text && ofer.text !== '—' ? '(' + ofer.text + ')' : '')).toUpperCase();
+    const safe    = _copyText.replace(/'/g,"&#39;").replace(/"/g,"&quot;");
     const cardCls = isCur ? ' at-bat' : '';
 
     const hdrRight = qLabel
       ? '<div class="pcard-hdr-right"><span class="queue-lbl' + (isCur?' queue-now':'') + '">' + qLabel + '</span></div>'
       : '';
+
+    // Detect 0-0 with walks — ESPN rule: never show 0-0, just WALK
+    const isZeroZeroWalk = p.ab === 0 && p.bb > 0 && ofer.cls !== 'emp';
 
     // Split ofer text into bold score + italic detail
     let oferHTML = '';
@@ -1138,32 +2054,73 @@ function renderRoster(elId, side, players, curBtr, isThisBatting) {
     } else {
       const parenIdx  = ofer.text.indexOf('(');
       const scorePart = parenIdx > -1 ? ofer.text.substring(0, parenIdx).trim() : ofer.text;
-      const detailPart= parenIdx > -1 ? ofer.text.substring(parenIdx) : '';
+      const detailPart= parenIdx > -1 ? ofer.text.substring(parenIdx).toUpperCase() : '';
+      var walkCls = isZeroZeroWalk ? ' walk-highlight' : '';
       oferHTML =
-        '<span class="ofer-val ' + ofer.cls + '">' +
+        '<span class="ofer-val ' + ofer.cls + walkCls + '">' +
           '<span class="ofer-score">' + gameLabel + ': ' + scorePart + '</span>' +
           (detailPart ? ' <span class="ofer-detail">' + detailPart + '</span>' : '') +
-        '</span>';
+        '</span>' +
+        (isZeroZeroWalk ? '<span class="walk-manual-tag">MANUAL ENTRY</span>' : '');
     }
 
-    // Season stat bar: AVG | HR | RBI
+    // Season stat bar: AVG (with trend + streak) | HR | RBI | W/K
     const avg   = p.savg || '---';
     const shr   = (p.shr  != null) ? p.shr  : '0';
     const srbi  = (p.srbi != null) ? p.srbi : '0';
     const isHot = p.savg && parseFloat(p.savg) >= 0.300;
+
+    // BA trend arrow
+    const prevAvgKey = 'prevAvg_' + p.uni + '_' + side;
+    const prevAvg    = window._prevAvgs ? (window._prevAvgs[prevAvgKey] || 0) : 0;
+    const curAvgF    = parseFloat(p.savg) || 0;
+    let trendArrow   = '';
+    if (prevAvg && curAvgF && Math.abs(curAvgF - prevAvg) >= 0.001) {
+      trendArrow = curAvgF > prevAvg
+        ? ' <span class="trend-up">&#9650;</span>'
+        : ' <span class="trend-dn">&#9660;</span>';
+    }
+
+    // Hit streak badge
+    const streakBadge = p.h > 0 ? '<span class="streak-badge">H</span> ' : '';
+
+    // W/K ratio from season stats
+    const sbb = p.sbb != null ? p.sbb : 0;
+    const sso = p.sso != null ? p.sso : 0;
+    const wkVal = sso > 0 ? (sbb / sso).toFixed(2) : (sbb > 0 ? '&infin;' : '&mdash;');
+
     const statBar =
       '<div class="stat-bar">' +
-        '<div class="stat-cell ba"><span class="stat-cell-val' + (isHot?' hot':'') + '">' + avg + '</span><span class="stat-cell-lbl"> BA</span></div>' +
-        '<div class="stat-cell"><span class="stat-cell-val">' + shr  + '</span><span class="stat-cell-lbl"> HR</span></div>' +
-        '<div class="stat-cell"><span class="stat-cell-val">' + srbi + '</span><span class="stat-cell-lbl"> RBI</span></div>' +
+        '<div class="stat-cell ba">' +
+          '<span class="stat-val">' + streakBadge + (p.savg||'---') + trendArrow + '</span>' +
+          '<span class="stat-cell-lbl stat-lbl">&nbsp;BA</span>' +
+        '</div>' +
+        '<div class="stat-cell">' +
+          '<span class="stat-val">' + shr + '</span>' +
+          '<span class="stat-cell-lbl stat-lbl">&nbsp;HR</span>' +
+        '</div>' +
+        '<div class="stat-cell">' +
+          '<span class="stat-val">' + srbi + '</span>' +
+          '<span class="stat-cell-lbl stat-lbl">&nbsp;RBI</span>' +
+        '</div>' +
+        '<div class="stat-cell">' +
+          '<span class="stat-val">' + wkVal + '</span>' +
+          '<span class="stat-cell-lbl stat-lbl">&nbsp;BB/K</span>' +
+        '</div>' +
       '</div>';
 
+    const cardId = 'card_' + side + '_' + p.uni;
+    const manualKey = 'manual_' + side + '_' + p.uni;
+    const manualVal = window._manualOverrides?.[manualKey] || '';
+    const copyVal   = manualVal || safe;
+    const manualActive = manualVal ? ' active' : '';
+
     return (
-      '<div class="pcard' + cardCls + '">' +
+      '<div class="pcard' + cardCls + '" id="' + cardId + '" data-spot="' + p.spot + '" data-side="' + side + '" data-uni="' + p.uni + '">' +
         '<div class="pcard-hdr">' +
           '<div class="pcard-hdr-left">' +
             '<span class="p-uni">#' + p.uni + '</span>' +
-            '<span class="p-name">' + p.name + '</span>' +
+            '<span class="p-name" title="Double-click to add note" ondblclick="showNoteInput(this.closest(\'.pcard\'))" style="cursor:pointer;">' + p.name + '</span>' +
             '<span class="p-pos">' + (p.pos||'—') + '</span>' +
           '</div>' +
           hdrRight +
@@ -1172,14 +2129,74 @@ function renderRoster(elId, side, players, curBtr, isThisBatting) {
           '<div class="content-area">' +
             '<div class="ofer-row">' +
               oferHTML +
-              '<button class="copy-btn" onclick="copyIt(this,\'' + safe + '\')">COPY</button>' +
+              (p.spot >= 1 && p.spot <= 9 ? '<span class="batting-spot-lbl">BATTING: ' + spotOrdinal(p.spot) + '</span>' : '') +
+              '<button class="copy-btn" title="Copy (or press ' + p.spot + ')" onclick="copyIt(this,window._manualOverrides?.[\'' + manualKey + '\'\]||\'' + safe + '\'\)">COPY</button>' +
             '</div>' +
           '</div>' +
         '</div>' +
         statBar +
+        (window._gameNotes && window._gameNotes[manualKey]
+          ? '<div class="game-note-row">' +
+              '<span class="game-note-icon">📌</span>' +
+              '<span class="game-note-txt">' + (window._gameNotes[manualKey]||'').replace(/</g,'&lt;') + '</span>' +
+              '<button class="game-note-clear" onclick="clearGameNote(\'' + manualKey + '\')">✕</button>' +
+            '</div>'
+          : '') +
+        '<input class="manual-override' + manualActive + '" ' +
+          'id="mo_' + manualKey + '" ' +
+          'placeholder="MANUAL OVERRIDE — type to replace stat line..." ' +
+          'value="' + manualVal.replace(/"/g,'&quot;') + '" ' +
+          'oninput="setManualOverride(\'' + manualKey + '\',this.value)" ' +
+          'ondblclick="clearManualOverride(\'' + manualKey + '\',this)">' +
       '</div>'
     );
   }).join('');
+
+  // Trigger staggered slide animation on cards if batter changed
+  if (animate) {
+    requestAnimationFrame(() => triggerEscalatorAnimation(side));
+  }
+
+  // ── Accordion: show pitchers, subs, anyone not in spots 1-9 ────────────
+  // Accordion: anyone outside spots 1-9 who appeared in the game
+  // Includes: pinch runners (gp=1 but 0 PA), relievers who batted, demoted subs
+  const extras = players.filter(p =>
+    (p.spot === 0 || p.spot > 9) &&
+    p.gp > 0 &&  // actually appeared in the game
+    (p.ab > 0 || p.bb > 0 || (p.hbp||0) > 0 || p.sf > 0 || p.r > 0)
+    // include if any AB, walk, HBP, SF, or even just scored a run
+  );
+  const accEl  = document.getElementById(elId + 'Acc');
+  if (accEl) {
+    if (extras.length === 0) {
+      accEl.style.display = 'none';
+    } else {
+      accEl.style.display = 'block';
+      const accLabel = document.getElementById(elId + 'AccLabel');
+      if (accLabel) accLabel.textContent = `▶ FULL ROSTER (${extras.length} more)`;
+      const accBody  = document.getElementById(elId + 'AccBody');
+      if (accBody) {
+        accBody.innerHTML = extras.map(p => {
+          const ofer = buildOfer(p);
+          const _ai = ofer.text.indexOf('(');
+          const _ac = (_ai > -1 ? ofer.text.substring(_ai)
+                    : (ofer.text && ofer.text !== '—' ? '(' + ofer.text + ')' : '')).toUpperCase();
+          const safe = _ac.replace(/'/g,"&#39;").replace(/"/g,"&quot;");
+          const oferLabel = ofer.cls === 'emp' ? '' :
+            `<div class="acc-ofer ${ofer.cls}">${gameLabel}: ${ofer.text.toUpperCase()}</div>`;
+          return `<div class="acc-card">
+            <span class="acc-uni">#${p.uni}</span>
+            <div class="acc-info">
+              <div class="acc-name">${p.name}</div>
+              ${oferLabel}
+            </div>
+            <span class="acc-pos">${p.pos||'—'}</span>
+            ${ofer.cls !== 'emp' ? `<button class="acc-copy" onclick="copyIt(this,'${safe}')">COPY</button>` : ''}
+          </div>`;
+        }).join('');
+      }
+    }
+  }
 }
 
 
@@ -1211,7 +2228,19 @@ function buildOfer(p) {
     // RULE 7: Most important first: HR > 3B > 2B > 1B
     // RULE 5: Spell out single HR type; multiple = "X HR"
     if (hr > 0) {
-      parts.push(hr === 1 ? hrLabel(rbi, s, d, t, p.hbp||0, p.sf||0) : `${hr} HR`);
+      // Use hrRbiMap for HR type — persists even after player bats again
+      // Falls back to narrative parsing then hrLabel estimation
+      const _hrKeys = nameKeys(p.short || p.name || '');
+      const _hrRbi  = window._hrRbiMap
+        ? _hrKeys.reduce((found, k) => found != null ? found : window._hrRbiMap[k], null)
+        : null;
+      if (_hrRbi != null) {
+        const _lbl = _hrRbi >= 4 ? 'Grand Slam' : _hrRbi === 3 ? '3-Run Home Run' :
+                     _hrRbi === 2 ? '2-Run Home Run' : 'Solo Home Run';
+        parts.push(hr === 1 ? _lbl : `${hr} HR`);
+      } else {
+        parts.push(hr === 1 ? hrLabel(rbi, s, d, t, p.hbp||0, p.sf||0, p.hasHitTypes) : `${hr} HR`);
+      }
     }
     if (t > 0) parts.push(t===1 ? 'Triple'  : `${t} Triples`);
     if (d > 0) parts.push(d===1 ? 'Double'  : `${d} Doubles`);
@@ -1263,24 +2292,25 @@ function buildOfer(p) {
 // RULE 5: infer HR type from RBI count
 // Accounts for ALL other RBI sources — hits, HBP, sac fly — before
 // estimating how many RBI came from the home run specifically.
-function hrLabel(rbi, s, d, t, hbp=0, sf=0) {
-  const otherRbiSources = s + d + t + hbp + sf;
+function hrLabel(rbi, s, d, t, hbp=0, sf=0, hasHitTypes=true) {
+  // If XML doesn't provide explicit hit-type breakdowns (double/triple/single attrs),
+  // s is derived (h - d - t - hr) and may not be real singles used for RBI.
+  // In that case, trust rbi directly without subtracting unconfirmed singles.
+  const knownOtherRbi = hasHitTypes
+    ? (s + d + t + hbp + sf)   // we know exact hit types — subtract them
+    : (d + t + hbp + sf);      // only subtract confirmed non-singles
 
-  if (otherRbiSources === 0) {
-    // No other RBI sources — all RBI came from the HR
-    if (rbi >= 4) return 'Grand Slam';
-    if (rbi === 3) return '3-Run Home Run';
-    if (rbi === 2) return '2-Run Home Run';
-    return 'Solo Home Run';
-  }
-
-  // Subtract minimum RBI attributable to other sources (1 per source)
-  // This gives the maximum RBI the HR could have produced
-  const estHrRbi = Math.max(0, rbi - otherRbiSources);
+  const estHrRbi = Math.max(0, rbi - knownOtherRbi);
 
   if (estHrRbi >= 4) return 'Grand Slam';
   if (estHrRbi === 3) return '3-Run Home Run';
   if (estHrRbi === 2) return '2-Run Home Run';
+  if (estHrRbi === 1) return 'Solo Home Run';
+
+  // Fallback — use raw rbi if estimate is 0 but we know there was an HR
+  if (rbi >= 4) return 'Grand Slam';
+  if (rbi === 3) return '3-Run Home Run';
+  if (rbi === 2) return '2-Run Home Run';
   return 'Solo Home Run';
 }
 
@@ -1306,36 +2336,380 @@ function copyIt(btn, text) {
 
 
 // ════════════════════════════════════════════════════════════════════════════
-// TEAM TAB — show both, away only, or home only
+// AT-BAT RESULT FLASH + ESCALATOR ANIMATION
 // ════════════════════════════════════════════════════════════════════════════
-let activeTab = 'both';
 
-function setTab(tab) {
-  activeTab = tab;
-  const visPanel = document.getElementById('visPanel');
-  const homPanel = document.getElementById('homPanel');
-  const main     = document.querySelector('.main');
+function getAtBatResult(players, batterShort) {
+  // Find the player who just batted and extract their result
+  const matchIdx = matchBatter(batterShort, players);
+  const p = matchIdx >= 0 ? players[matchIdx] : null;
+  if (!p) return null;
+  const ofer = buildOfer(p);
+  if (ofer.cls === 'emp') return null;
 
-  document.querySelectorAll('.team-tab').forEach(b => b.classList.remove('active'));
-  const sel = tab === 'both' ? '.team-tab.both' : '.team-tab.' + tab;
-  document.querySelector(sel).classList.add('active');
+  // Extract the detail from ofer text
+  const parenIdx = ofer.text.indexOf('(');
+  const score    = parenIdx > -1 ? ofer.text.substring(0, parenIdx).trim() : ofer.text;
+  const detail   = parenIdx > -1 ? ofer.text.substring(parenIdx + 1, ofer.text.lastIndexOf(')')) : ofer.text;
+  const firstItem = detail.split(',')[0].trim();
 
-  if (tab === 'vis') {
-    visPanel.style.display = 'block';
-    homPanel.style.display = 'none';
-    main.style.gridTemplateColumns = '1fr';
-  } else if (tab === 'hom') {
-    visPanel.style.display = 'none';
-    homPanel.style.display = 'block';
-    main.style.gridTemplateColumns = '1fr';
-  } else {
-    visPanel.style.display = 'block';
-    homPanel.style.display = 'block';
-    main.style.gridTemplateColumns = window.innerWidth > 768 ? '1fr 1fr' : '1fr';
+  // Try to get a precise label from the play-by-play action code first
+  let primary = null;
+  const playMap = window._lastPlayMap || {};
+  // Try all name key variants for robust lookup
+  const _lookupKeys = nameKeys(p.short || p.name || '');
+  const playKeys = Object.keys(playMap);
+  const matchedKey = _lookupKeys.reduce((found, key) =>
+    found || playKeys.find(k => k === key) || null, null
+  );
+  if (matchedKey) {
+    const play = playMap[matchedKey];
+    primary = actionToLabel(play.action, play.desc, play.decision);
   }
+
+  // Fall back to ofer text detail if no play map match
+  if (!primary) {
+    const looksLikeScore = /^\d+-\d+$/.test(firstItem);
+    if (!looksLikeScore && firstItem) {
+      primary = firstItem.toUpperCase();
+    } else if (looksLikeScore) {
+      // Check player's roe stat — reached on error looks like 0-fer but isn't an out
+      if (p.roe > 0)      primary = 'REACHED ON ERROR';
+      else if (ofer.cls === 'neg') primary = 'OUT';
+      else if (ofer.cls === 'pos') primary = 'HIT';
+      else                         primary = null;
+    }
+  }
+
+  if (!primary) return null;
+
+  return { name: p.name, primary, score, cls: ofer.cls };
 }
 
-function updateTabs(visName, homName) {
+function showResultFlash(result, side) {
+  if (!result || !result.primary) return;
+
+  // Find the current batter's card (first .pcard with .at-bat class in the batting panel)
+  const panelId = (side === 'V' ? 'vis' : 'hom') + 'Panel';
+  const panel   = document.getElementById(panelId);
+  if (!panel) return;
+
+  // Target the ▶ NOW card (first card = current batter after escalator sort)
+  const card = panel.querySelector('.pcard.at-bat') || panel.querySelector('.pcard');
+  if (!card) return;
+
+  // Remove any existing overlay
+  const existing = card.querySelector('.card-result-overlay');
+  if (existing) existing.remove();
+
+  // Build and inject overlay
+  const overlay = document.createElement('div');
+  overlay.className = 'card-result-overlay';
+  overlay.innerHTML =
+    '<div class="card-result-overlay-bg"></div>' +
+    '<div class="card-result-primary ' + (result.cls||'') + '">' + result.primary + '</div>' +
+    '<div class="card-result-score">' + result.score + '</div>';
+
+  card.appendChild(overlay);
+
+  // Trigger animation
+  void overlay.offsetWidth;
+  overlay.classList.add('show');
+
+  // Remove after 3s
+  if (flashTimer) clearTimeout(flashTimer);
+  flashTimer = setTimeout(() => {
+    overlay.remove();
+    flashTimer = null;
+  }, 3000);
+}
+
+function triggerEscalatorAnimation(side) {
+  // Add slide-in class to each card with staggered delay
+  const panel = document.getElementById(side + 'Panel');
+  if (!panel) return;
+  const cards = panel.querySelectorAll('.pcard');
+  cards.forEach((card, i) => {
+    card.classList.remove('slide-in', 'slide-up');
+    void card.offsetWidth;
+    card.classList.add(i === 0 ? 'slide-in' : 'slide-up');
+    card.style.animationDelay = (i * 0.06) + 's';
+  });
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// INNING SUMMARY OVERLAY
+// ════════════════════════════════════════════════════════════════════════════
+function ordinalInning(n) {
+  const s = ['TH','ST','ND','RD'];
+  const v = n % 100;
+  return n + (s[(v-20)%10] || s[v] || s[0]);
+}
+
+function spotOrdinal(n) {
+  const map = {1:'1ST',2:'2ND',3:'3RD',4:'4TH',5:'5TH',6:'6TH',7:'7TH',8:'8TH',9:'9TH'};
+  return map[n] || n + 'TH';
+}
+
+function buildInningSummary(xml, battingSide, inning, topBot) {
+  // Find the current half-inning's plays
+  const vh = battingSide; // 'V' or 'H'
+  const teamName = battingSide === 'V'
+    ? (xml.querySelector('team[vh="V"]')?.getAttribute('name') || 'AWAY')
+    : (xml.querySelector('team[vh="H"]')?.getAttribute('name') || 'HOME');
+
+  // Get runs/hits/lob from linescore for this inning
+  const teamEl   = xml.querySelector(`team[vh="${vh}"]`);
+  const lineinn  = teamEl?.querySelector(`lineinn[inn="${inning}"]`);
+  const runs     = parseInt(lineinn?.getAttribute('score') || '0');
+  const hits     = parseInt(lineinn?.getAttribute('hits')  || '0');
+  const lob      = parseInt(lineinn?.getAttribute('lob')   || '0');
+
+  // Get all plays from the matching inning element for this half
+  // Innings in XML are split by batting side inside <inning number="N">
+  let plays = [];
+  xml.querySelectorAll('inning').forEach(inn => {
+    if (inn.getAttribute('number') !== String(inning)) return;
+    const batting = [...inn.querySelectorAll('batting')].find(b => b.getAttribute('vh') === vh);
+    if (!batting) return;
+    batting.querySelectorAll('play').forEach(play => {
+      const bEl  = play.querySelector('batter');
+      if (!bEl) return;
+      const name    = play.getAttribute('batter') || '';
+      const action  = bEl.getAttribute('action')   || '';
+      const decision= bEl.getAttribute('decision') || '';
+      const desc    = bEl.getAttribute('wheredesc') || '';
+      const h       = parseInt(bEl.getAttribute('h')   || '0');
+      const rbi     = parseInt(bEl.getAttribute('rbi') || '0');
+      const out     = bEl.getAttribute('out') === '1';
+      const ab      = parseInt(bEl.getAttribute('ab') || '0');
+      const bb      = parseInt(bEl.getAttribute('bb') || '0');
+      const roe     = parseInt(bEl.getAttribute('rcherr') || '0');
+
+      // Only show noteworthy plays: hits, RBI, walks, errors
+      const noteworthy = h > 0 || rbi > 0 || bb > 0 || roe > 0;
+      if (!noteworthy && out) return; // skip pure outs
+      if (!noteworthy && ab === 0 && bb === 0) return;
+
+      const label = actionToLabel(action, desc, decision) ||
+        (h > 0 ? (action.includes('HR') ? 'HOME RUN' : action.includes('3B') ? 'TRIPLE' :
+                   action.includes('2B') ? 'DOUBLE' : 'SINGLE') :
+         bb > 0 ? 'WALK' : roe > 0 ? 'REACHED ON ERROR' : '');
+      const rbiStr = rbi > 0 ? `, ${rbi} RBI` : '';
+      const cls    = h > 0 || roe > 0 ? 'pos' : bb > 0 ? 'neu' : 'neg';
+
+      if (label) plays.push({ name, label: label + rbiStr, cls });
+    });
+  });
+
+  return { teamName, inning, topBot, runs, hits, lob, plays };
+}
+
+function showInningSummary(data) {
+  const el = document.getElementById('inningSummary');
+  if (!el) return;
+
+  const half = data.topBot === 'V' ? 'TOP' : 'BOT';
+  document.getElementById('innSumTitle').textContent =
+    'END OF ' + half + ' ' + ordinalInning(data.inning);
+  document.getElementById('innSumTeam').textContent  = data.teamName.toUpperCase();
+  document.getElementById('innSumRuns').textContent  = data.runs;
+  document.getElementById('innSumHits').textContent  = data.hits;
+  document.getElementById('innSumLob').textContent   = data.lob;
+
+  const playsEl = document.getElementById('innSumPlays');
+  if (data.plays.length === 0) {
+    playsEl.innerHTML = '<div class="inn-sum-play"><span class="inn-sum-play-result neg">NO RUNS SCORED</span></div>';
+  } else {
+    playsEl.innerHTML = data.plays.map(p =>
+      `<div class="inn-sum-play">
+        <span class="inn-sum-play-name">${p.name.toUpperCase()}</span>
+        <span class="inn-sum-play-result ${p.cls}">${p.label}</span>
+      </div>`
+    ).join('');
+  }
+
+  el.classList.add('show');
+  inningSummaryShowing = true;
+}
+
+function hideInningSummary() {
+  const el = document.getElementById('inningSummary');
+  if (el) el.classList.remove('show');
+  inningSummaryShowing = false;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// HAMBURGER MENU
+// ════════════════════════════════════════════════════════════════════════════
+function openMenu()  {
+  document.getElementById('sideMenu').classList.add('open');
+  document.getElementById('menuOverlay').classList.add('open');
+}
+function closeMenu() {
+  document.getElementById('sideMenu').classList.remove('open');
+  document.getElementById('menuOverlay').classList.remove('open');
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// ACCORDION TOGGLE
+// ════════════════════════════════════════════════════════════════════════════
+function toggleAcc(btn) {
+  btn.classList.toggle('open');
+  const body = btn.nextElementSibling;
+  body.classList.toggle('open');
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════
+// PHASE 3 — XPRESSION DATALINQ XML OUTPUT
+// Mimics the existing Datalinq structure — only supplies the "stat" field.
+// stat = detail in parens only, e.g. "(Home Run, Single, SB)"
+// Structure: teams > V|H > roster > roster > xpn_id + stat (xpn_id as child element)
+// Auto-rewrites on every 10-second refresh.
+// ════════════════════════════════════════════════════════════════════════════
+let outputFileHandle = null;
+let outputWriting    = false;
+
+function getStatDetail(p) {
+  const ofer = buildOfer(p);
+  if (ofer.cls === 'emp') return '';
+  const text = ofer.text;
+  const parenIdx = text.indexOf('(');
+  const detail = parenIdx > -1 ? text.substring(parenIdx)
+               : (text && text !== '—' ? '(' + text + ')' : '');
+  return detail.toUpperCase();
+}
+
+function buildOutputXML() {
+  if (!window._lastVisPlayers || !window._lastHomPlayers) return null;
+
+  const esc = s => String(s || '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&apos;');
+
+  const appeared = p =>
+    (p.spot >= 1 && p.spot <= 9) ||
+    (p.ab > 0 || p.bb > 0 || (p.hbp||0) > 0 || p.sf > 0 || p.r > 0);
+
+  const renderTeam = players =>
+    players.filter(appeared).map(p =>
+      `      <roster>\n        <jersey_num>${esc(p.uni)}</jersey_num>\n        <stat>${esc(getStatDetail(p))}</stat>\n      </roster>`
+    ).join('\n');
+
+  return '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    '<root>\n' +
+    '<teams>\n' +
+    '  <V>\n    <roster>\n' + renderTeam(window._lastVisPlayers) + '\n    </roster>\n  </V>\n' +
+    '  <H>\n    <roster>\n' + renderTeam(window._lastHomPlayers) + '\n    </roster>\n  </H>\n' +
+    '</teams>\n' +
+    '</root>';
+}
+
+async function saveOutput() {
+  if (!outputFileHandle) {
+    try {
+      outputFileHandle = await window.showSaveFilePicker({
+        suggestedName: 'ofer_output.xml',
+        types: [{ description: 'XML File', accept: { 'text/xml': ['.xml'] } }]
+      });
+      const btn = document.getElementById('saveOutputBtn');
+      if (btn) {
+        btn.innerHTML = '<span class="menu-icon">💾</span> Output: Active ✓';
+        btn.style.opacity='1'; btn.style.cursor='pointer'; btn.disabled=false;
+      }
+      await writeOutputFile();
+    } catch(e) { if (e.name !== 'AbortError') console.error('Save error:', e); }
+  } else { await writeOutputFile(); }
+}
+
+async function writeOutputFile() {
+  if (!outputFileHandle || outputWriting) return;
+  const xml = buildOutputXML();
+  if (!xml) return;
+  outputWriting = true;
+  let attempts = 0;
+  while (attempts < 3) {
+    try {
+      const w = await outputFileHandle.createWritable();
+      await w.write(xml);
+      await w.close();
+      break; // success
+    } catch(e) {
+      attempts++;
+      if (attempts < 3) {
+        // Brief pause before retry — handles temporary file locks from Datalinq reads
+        await new Promise(r => setTimeout(r, 250));
+      } else {
+        console.warn('Output write failed after 3 attempts:', e.message);
+      }
+    }
+  }
+  outputWriting = false;
+}
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// TEAM TAB — show both, away only, or home only
+// ════════════════════════════════════════════════════════════════════════════
+let activeTab    = 'both';
+let userPickedTab = false; // true once user manually taps a tab
+
+function setTab(tab, manual=false) {
+  if (manual) userPickedTab = true;
+  activeTab = tab;
+  const visPanel  = document.getElementById('visPanel');
+  const homPanel  = document.getElementById('homPanel');
+  const pbpPanel  = document.getElementById('pbpPanel');
+  const cardPanel = document.getElementById('cardPanel');
+  const main      = document.querySelector('.main');
+
+  // Hide all special panels first
+  if (pbpPanel)  pbpPanel.style.display  = 'none';
+  if (cardPanel) cardPanel.style.display = 'none';
+
+  // Active tab styling — clear all then set active
+  document.querySelectorAll('.team-tab').forEach(b => b.classList.remove('active'));
+
+  if (tab === 'pbp') {
+    if (visPanel)  visPanel.style.display  = 'none';
+    if (homPanel)  homPanel.style.display  = 'none';
+    if (pbpPanel)  pbpPanel.style.display  = '';
+    if (main) main.style.gridTemplateColumns = '1fr';
+    const el = document.getElementById('tabPbp');
+    if (el) el.classList.add('active');
+    renderPbp();
+  } else if (tab === 'card') {
+    if (visPanel)  visPanel.style.display  = 'none';
+    if (homPanel)  homPanel.style.display  = 'none';
+    if (cardPanel) cardPanel.style.display = '';
+    if (main) main.style.gridTemplateColumns = '1fr';
+    const el = document.getElementById('tabCard');
+    if (el) el.classList.add('active');
+    renderScorecard();
+  } else if (tab === 'vis') {
+    if (visPanel) visPanel.style.display = 'block';
+    if (homPanel) homPanel.style.display = 'none';
+    if (main) main.style.gridTemplateColumns = '1fr';
+    const el = document.getElementById('tabVis');
+    if (el) el.classList.add('active');
+  } else if (tab === 'hom') {
+    if (visPanel) visPanel.style.display = 'none';
+    if (homPanel) homPanel.style.display = 'block';
+    if (main) main.style.gridTemplateColumns = '1fr';
+    const el = document.getElementById('tabHom');
+    if (el) el.classList.add('active');
+  } else {
+    // both
+    if (visPanel) visPanel.style.display = 'block';
+    if (homPanel) homPanel.style.display = 'block';
+    if (main) main.style.gridTemplateColumns = window.innerWidth > 768 ? '1fr 1fr' : '1fr';
+    document.querySelector('.team-tab.both')?.classList.add('active');
+  }
+
+}
+
+function updateTabs(visName, homName, battingSide) {
   const tabVis = document.getElementById('tabVis');
   const tabHom = document.getElementById('tabHom');
   if (tabVis) tabVis.textContent = visName || 'AWAY';
@@ -1346,6 +2720,14 @@ function updateTabs(visName, homName) {
   const homLbl = document.getElementById('homColorLabel');
   if (visLbl) visLbl.textContent = visName || '—';
   if (homLbl) homLbl.textContent = homName || '—';
+  // Always follow the batting team — switch every half inning automatically
+  // But never override if user is on a special tab (scorecard, pbp)
+  if (battingSide && activeTab !== 'pbp' && activeTab !== 'card') {
+    const newTab = battingSide === 'V' ? 'vis' : 'hom';
+    if (activeTab !== newTab) {
+      setTab(newTab);
+    }
+  }
 }
 
 window.addEventListener('resize', () => {
@@ -1354,5 +2736,695 @@ window.addEventListener('resize', () => {
       window.innerWidth > 768 ? '1fr 1fr' : '1fr';
   }
 });
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// MANUAL OVERRIDE
+// ════════════════════════════════════════════════════════════════════════════
+function setManualOverride(key, val) {
+  window._manualOverrides = window._manualOverrides || {};
+  if (val.trim()) {
+    window._manualOverrides[key] = val.trim().toUpperCase();
+    const inp = document.getElementById('mo_' + key);
+    if (inp) inp.classList.add('active');
+  } else {
+    delete window._manualOverrides[key];
+    const inp = document.getElementById('mo_' + key);
+    if (inp) inp.classList.remove('active');
+  }
+}
+function clearManualOverride(key, inp) {
+  delete (window._manualOverrides || {})[key];
+  if (inp) { inp.value = ''; inp.classList.remove('active'); }
+}
+function toggleManualInput(cardEl) {
+  const inp = cardEl ? cardEl.querySelector('.manual-override') : null;
+  if (!inp) return;
+  const showing = inp.style.display === 'block' || inp.classList.contains('active');
+  if (showing) { inp.style.display = ''; inp.classList.remove('active'); }
+  else { inp.style.display = 'block'; inp.classList.add('active'); inp.focus(); }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// KEYBOARD SHORTCUTS
+// ════════════════════════════════════════════════════════════════════════════
+document.addEventListener('keydown', function(e) {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  const key = e.key;
+  if (/^[1-9]$/.test(key)) {
+    const side = activeTab === 'hom' ? 'hom' : 'vis';
+    const panel = document.getElementById(side + 'Panel');
+    if (!panel) return;
+    const card = [...panel.querySelectorAll('.pcard')].find(c => c.getAttribute('data-spot') === key);
+    if (!card) return;
+    const btn = card.querySelector('.copy-btn');
+    if (btn) btn.click();
+    return;
+  }
+  if (key === 'c' || key === 'C') { copyAllStatLines(); return; }
+  if (key === 'm' || key === 'M') {
+    const side = activeTab === 'hom' ? 'hom' : 'vis';
+    const panel = document.getElementById(side + 'Panel');
+    const nowCard = panel && (panel.querySelector('.pcard.at-bat') || panel.querySelector('.pcard'));
+    if (nowCard) toggleManualInput(nowCard);
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// COPY ALL STAT LINES
+// ════════════════════════════════════════════════════════════════════════════
+function copyAllStatLines() {
+  const side = activeTab === 'hom' ? 'hom' : 'vis';
+  const panel = document.getElementById(side + 'Panel');
+  if (!panel) return;
+  const lines = [];
+  panel.querySelectorAll('.pcard').forEach(function(card) {
+    const uni  = card.getAttribute('data-uni') || '';
+    const nameEl = card.querySelector('.p-name');
+    const name = nameEl ? nameEl.textContent.trim() : '';
+    const side2 = card.getAttribute('data-side') || side;
+    const key  = 'manual_' + side2 + '_' + uni;
+    const manualVal = (window._manualOverrides || {})[key] || '';
+    const btn  = card.querySelector('.copy-btn');
+    if (!btn) return;
+    const onclick = btn.getAttribute('onclick') || '';
+    const match = onclick.match(/copyIt\(this,'([^']*)'\)/);
+    const stat = manualVal || (match ? match[1].replace(/&#39;/g,"'") : '');
+    if (stat && stat !== '—') lines.push('#' + uni + ' ' + name + ' — ' + stat);
+  });
+  if (!lines.length) return;
+  navigator.clipboard.writeText(lines.join('\n')).catch(function(){});
+  setStat('ok', 'ALL STAT LINES COPIED (' + lines.length + ')');
+  setTimeout(function() { setStat('ok', 'UPDATED ' + new Date().toLocaleTimeString()); }, 2000);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// FONT SIZE + THEME
+// ════════════════════════════════════════════════════════════════════════════
+function applyFontSize(val) {
+  // Scale the player cards and score bar — areas that matter for operators
+  const pct = parseInt(val) / 100;
+  document.querySelectorAll('.pcard, .graphic-body, .stat-bar').forEach(el => {
+    el.style.zoom = pct;
+  });
+  // Also scale the score bar text
+  const sb = document.querySelector('.score-inner');
+  if (sb) sb.style.zoom = pct;
+  const lbl = document.getElementById('fontSizeLabel');
+  if (lbl) lbl.textContent = val + '%';
+}
+
+var isDarkMode = true;
+function toggleTheme() {
+  isDarkMode = !isDarkMode;
+  const root = document.documentElement;
+  const btn  = document.getElementById('themeBtn');
+  if (isDarkMode) {
+    root.style.setProperty('--bg',       '#0a0c10');
+    root.style.setProperty('--surface',  '#12151c');
+    root.style.setProperty('--surface2', '#1a1e28');
+    root.style.setProperty('--text',     '#e8eaf0');
+    if (btn) btn.textContent = '\uD83C\uDF19 DARK MODE';
+  } else {
+    root.style.setProperty('--bg',       '#f0f2f5');
+    root.style.setProperty('--surface',  '#ffffff');
+    root.style.setProperty('--surface2', '#e8eaf0');
+    root.style.setProperty('--text',     '#111827');
+    if (btn) btn.textContent = '\u2600\uFE0F LIGHT MODE';
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// BASES DIAMOND
+// ════════════════════════════════════════════════════════════════════════════
+function updateBasesDiamond(status) {
+  const diamond = document.getElementById('basesDiamond');
+  if (!diamond) return;
+  const b1 = !!(status && status.getAttribute('first')  && status.getAttribute('first').trim());
+  const b2 = !!(status && status.getAttribute('second') && status.getAttribute('second').trim());
+  const b3 = !!(status && status.getAttribute('third')  && status.getAttribute('third').trim());
+  // Always show diamond once game starts
+  diamond.style.display = 'block';
+  const on = '#f5a623', off = '#333';
+  const e1 = document.getElementById('base1');
+  const e2 = document.getElementById('base2');
+  const e3 = document.getElementById('base3');
+  if (e1) e1.setAttribute('fill', b1 ? on : off);
+  if (e2) e2.setAttribute('fill', b2 ? on : off);
+  if (e3) e3.setAttribute('fill', b3 ? on : off);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// GAME RECAP (Claude API)
+// ════════════════════════════════════════════════════════════════════════════
+
+
+
+
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// V5 — INNING SCORING STRIP
+// ════════════════════════════════════════════════════════════════════════════
+function updateScoringStrip(xml, visName, homName, curInn) {
+  const strip = document.getElementById('scoringStrip');
+  if (!strip) return;
+
+  var visTeam = xml.querySelector('team[vh="V"]');
+  var homTeam = xml.querySelector('team[vh="H"]');
+  if (!visTeam || !homTeam) return;
+
+  function getInnings(teamEl, maxInn) {
+    var ls = teamEl.querySelector('linescore');
+    var rows = [];
+    for (var i = 1; i <= maxInn; i++) {
+      var li = ls ? ls.querySelector('lineinn[inn="' + i + '"]') : null;
+      rows.push(li ? parseInt(li.getAttribute('score') || '0') : null);
+    }
+    return rows;
+  }
+
+  var maxInn = Math.max(curInn, 9);
+  var visInns = getInnings(visTeam, maxInn);
+  var homInns = getInnings(homTeam, maxInn);
+
+  var visTotal = parseInt(visTeam.querySelector('linescore')?.getAttribute('runs') || '0');
+  var homTotal = parseInt(homTeam.querySelector('linescore')?.getAttribute('runs') || '0');
+
+  function buildRow(inns, total, name) {
+    var cells = inns.map(function(score, idx) {
+      var s = score === null ? '-' : score;
+      var cls = (score !== null && score > 0) ? ' scored' : '';
+      return '<div class="strip-inn"><div class="strip-inn-num">' + (idx+1) + '</div>' +
+             '<div class="strip-inn-score' + cls + '">' + s + '</div></div>';
+    }).join('');
+    return '<div class="strip-team"><div>' + (name.length > 10 ? name.substring(0,10) : name).toUpperCase() + '</div><span>' + total + '</span></div>' +
+           '<div class="strip-innings">' + cells + '</div>' +
+           '<div class="strip-total"><div class="strip-total-lbl">R</div><div class="strip-total-val">' + total + '</div></div>';
+  }
+
+  strip.innerHTML =
+    '<div style="display:flex;flex-direction:column;gap:0;flex:1;">' +
+      '<div style="display:flex;align-items:center;border-bottom:1px solid var(--border2);">' + buildRow(visInns, visTotal, visName) + '</div>' +
+      '<div style="display:flex;align-items:center;">' + buildRow(homInns, homTotal, homName) + '</div>' +
+    '</div>';
+  strip.classList.add('on');
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// V5 — GAME NOTES
+// ════════════════════════════════════════════════════════════════════════════
+window._gameNotes = window._gameNotes || {};
+
+function setGameNote(key, text) {
+  window._gameNotes = window._gameNotes || {};
+  if (text && text.trim()) {
+    window._gameNotes[key] = text.trim();
+  } else {
+    delete window._gameNotes[key];
+  }
+}
+
+function clearGameNote(key) {
+  delete (window._gameNotes || {})[key];
+  // Trigger re-render
+  if (window._lastVisPlayers && window._lastHomPlayers) {
+    var curBtr = document.getElementById('atBatTxt') ?
+      document.getElementById('atBatTxt').textContent.replace('AT BAT: ','') : '';
+    renderRoster('visRoster', 'vis', window._lastVisPlayers, curBtr, false, false);
+    renderRoster('homRoster', 'hom', window._lastHomPlayers, curBtr, false, false);
+  }
+}
+
+function showNoteInput(cardEl) {
+  if (!cardEl) return;
+  var uni  = cardEl.getAttribute('data-uni') || '';
+  var side = cardEl.getAttribute('data-side') || '';
+  var key  = 'manual_' + side + '_' + uni;
+  var existing = (window._gameNotes || {})[key] || '';
+  var note = prompt('Game note for this player (leave blank to clear):', existing);
+  if (note === null) return; // cancelled
+  setGameNote(key, note);
+  clearGameNote('__force_rerender__'); // trigger re-render
+  if (window._lastVisPlayers && window._lastHomPlayers) {
+    var btr = document.getElementById('atBatTxt') ?
+      document.getElementById('atBatTxt').textContent.replace('AT BAT: ','') : '';
+    renderRoster('visRoster', 'vis', window._lastVisPlayers, btr, false, false);
+    renderRoster('homRoster', 'hom', window._lastHomPlayers, btr, false, false);
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// V5 — AUTO-BACKUP XML OUTPUT
+// Saves a timestamped copy when the inning changes
+// ════════════════════════════════════════════════════════════════════════════
+async function autoBackupOutput(inning, topBot) {
+  if (!outputFileHandle) return;
+  var xml = buildOutputXML();
+  if (!xml) return;
+  try {
+    var half = topBot === 'V' ? 'top' : 'bot';
+    var stamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0,19);
+    var backupName = 'ofer_backup_inn' + inning + half + '_' + stamp + '.xml';
+    // Use showSaveFilePicker would require user interaction — instead
+    // write to a sibling key in OPFS (Origin Private File System) if available
+    if (navigator.storage && navigator.storage.getDirectory) {
+      var root = await navigator.storage.getDirectory();
+      var fh   = await root.getFileHandle(backupName, { create: true });
+      var w    = await fh.createWritable();
+      await w.write(xml);
+      await w.close();
+      console.log('Auto-backup saved:', backupName);
+    }
+  } catch(e) {
+    console.warn('Auto-backup failed:', e.message);
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// V5 — VERSION
+// ════════════════════════════════════════════════════════════════════════════
+// ESPN-0Fers V5
+
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// PLAY-BY-PLAY TAB
+// ════════════════════════════════════════════════════════════════════════════
+function renderPbp() {
+  var el = document.getElementById('pbpList');
+  if (!el || !window._lastXml) return;
+
+  var xml = window._lastXml;
+  var html = '';
+  var currentInning = '';
+
+  xml.querySelectorAll('inning').forEach(function(inn) {
+    var innNum = inn.getAttribute('number') || '?';
+
+    inn.querySelectorAll('batting').forEach(function(bat) {
+      var vh   = bat.getAttribute('vh');
+      var team = vh === 'V' ? window._lastVisName : window._lastHomName;
+      var half = vh === 'V' ? '▲ TOP' : '▼ BOT';
+      var halfKey = half + ' ' + innNum;
+
+      if (halfKey !== currentInning) {
+        currentInning = halfKey;
+        html += '<div style="margin-top:10px;padding:3px 8px;background:var(--surface2);' +
+                'font-family:Oswald,sans-serif;font-size:11px;font-weight:700;' +
+                'letter-spacing:2px;color:#888;text-transform:uppercase;">' +
+                half + ' ' + ordinalInning(parseInt(innNum)) + ' — ' + (team||'').toUpperCase() + ' BATTING</div>';
+      }
+
+      bat.querySelectorAll('play').forEach(function(play) {
+        var narr = play.querySelector('narrative');
+        if (!narr) return;
+        var text = narr.getAttribute('text') || '';
+        if (!text) return;
+
+        // Color code by result type
+        var textLow = text.toLowerCase();
+        var color = '#888';
+        if (/homer|home run/.test(textLow))     color = '#f5a623';
+        else if (/tripled|doubled|singled/.test(textLow)) color = '#00c97a';
+        else if (/struck out|strikeout/.test(textLow))    color = '#ff4444';
+        else if (/hit by pitch|walked/.test(textLow))     color = '#aaa';
+        else if (/scored|rbi/.test(textLow))              color = '#00e676';
+        else if (/error/.test(textLow))                   color = '#ff8c00';
+        else if (/double play/.test(textLow))             color = '#ff4444';
+
+        html += '<div style="padding:2px 10px;border-bottom:1px solid #111;color:' + color + ';">' +
+                text + '</div>';
+      });
+
+      // Inning summary
+      var sum = bat.querySelector('innsummary');
+      if (sum) {
+        var r = sum.getAttribute('r') || '0';
+        var h = sum.getAttribute('h') || '0';
+        var e = sum.getAttribute('e') || '0';
+        html += '<div style="padding:2px 10px 6px 10px;font-weight:700;color:#555;font-size:10px;">' +
+                r + ' R, ' + h + ' H, ' + e + ' E</div>';
+      }
+    });
+  });
+
+  el.innerHTML = html || '<div style="padding:20px;color:#555;">No play-by-play data available.</div>';
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// SCORECARD TAB — StatBroadcast style grid
+// ════════════════════════════════════════════════════════════════════════════
+// Generate all lookup key variants for a player name
+// Handles: 'Last, Init', 'Last,Init', 'Last,First', 'First Last', 'Single'
+function nameKeys(name) {
+  if (!name) return [];
+  var n = name.toLowerCase().trim();
+  var keys = [n];
+  // No space after comma: 'fitch, t' → 'fitch,t'
+  var nosp = n.replace(/,\s+/g, ',');
+  if (nosp !== n) keys.push(nosp);
+  // Space after comma: 'fitch,t' → 'fitch, t'
+  var sp = n.replace(/,([^\s])/g, ', $1');
+  if (sp !== n) keys.push(sp);
+  // Last name only (first segment before comma or first word)
+  var last = n.indexOf(',') > -1 ? n.split(',')[0].trim() : n.split(' ')[0];
+  if (last && last !== n && last.length > 1) keys.push(last);
+  return keys;
+}
+
+function renderScorecard() {
+  var wrap = document.getElementById('scorecardWrap');
+  if (!wrap || !window._lastXml) return;
+
+  var xml     = window._lastXml;
+  var visName = window._lastVisName || 'AWAY';
+  var homName = window._lastHomName || 'HOME';
+
+  // ── Collect plate appearances per player per inning ────────────────────
+  // Both formats: walk <inning number="N"><batting vh="V|H"><play> DOM structure
+  // innseq = batting order position within half (NOT inning number) — ignore it
+  // Inning number always comes from the <inning> parent element
+  function buildPaMap(vh) {
+    var map = {};
+
+    function recordPlay(bname, innNum, narrText, bEl) {
+      if (!bname || !innNum) return;
+      var action = '';
+
+      if (bEl) {
+        var ab  = parseInt(bEl.getAttribute('ab')  || '0');
+        var av  = (bEl.getAttribute('action')   || '').trim();
+        var dv  = (bEl.getAttribute('decision')  || '').trim();
+        if (ab < 1 && !av && !dv) return;
+        action = dv || av;  // decision takes precedence (e.g. SF8 → SF), fallback to action
+      } else {
+        if (!narrText) return;
+        var nl  = narrText.toLowerCase();
+        var nm  = nl.split(';')[0].trim();
+        var skip = nm.includes(' stole ') ||
+          /\bscored\b/.test(nm) || nl.includes('picked off') ||
+          nl.includes('pinch hit') || nl.includes('pinch ran') ||
+          nl.includes('mound visit') || nl.includes('no play') ||
+          isSub(narrText);
+        var bLast = bname.split(',')[0].toLowerCase();
+        var starts = nl.startsWith(bname.toLowerCase()) || nl.startsWith(bLast);
+        if (skip || !starts) return;
+        // Use a sentinel to trigger narrative-based codeToSym directly
+        if (/struck out|hit by pitch|walked|homered|tripled|doubled|singled|grounded out|grounded into double play|lined into double play|flied out|fouled out|lined out|popped up|popped out|infield fly|fielder.s choice|reached.*(error|muffed)|sacrifice bunt|sac bunt|sacrifice fly/.test(nl)) {
+          action = 'NARR'; // sentinel: let codeToSym parse from narrText
+        } else return;
+      }
+
+      var sym = codeToSym(action, narrText);
+      if (!sym) return;
+      // Store under primary key only, register aliases separately
+      var primaryKey = bname.toLowerCase().trim();
+      if (!map[primaryKey]) map[primaryKey] = {};
+      var existing = map[primaryKey][innNum] || '';
+      map[primaryKey][innNum] = existing ? existing + '/' + sym : sym;
+      // Register all name variants pointing to primary key
+      if (!map.__aliases__) map.__aliases__ = {};
+      nameKeys(bname).forEach(function(alias) {
+        if (alias !== primaryKey) map.__aliases__[alias] = primaryKey;
+      });
+      // For HR plays in Format B, extract paRbi from narrative for hrRbiMap
+      if (sym === 'HR' && !bEl && narrText) {
+        var rbiMatch = narrText.match(/(\d+)\s+rbi/i);
+        var paRbiNarr = rbiMatch ? parseInt(rbiMatch[1]) : 1; // default solo if no RBI in narrative
+        // "RBI" with no number means 1 RBI
+        if (!rbiMatch && /\brbi\b/i.test(narrText)) paRbiNarr = 1;
+        window._hrRbiMap = window._hrRbiMap || {};
+        nameKeys(bname).forEach(function(k) { window._hrRbiMap[k] = paRbiNarr; });
+      }
+    }
+
+    // Walk every <play> element and find its inning number by walking up the DOM.
+    // This is robust across all XML formats and browser XML parsers.
+    xml.querySelectorAll('play').forEach(function(play) {
+      // Walk up to find <batting vh="V|H"> parent
+      var bat = play.parentElement || play.parentNode;
+      if (!bat || bat.tagName.toLowerCase() !== 'batting') return;
+      if (bat.getAttribute('vh') !== vh) return;
+
+      // Walk up to find <inning number="N"> grandparent
+      var inn = bat.parentElement || bat.parentNode;
+      if (!inn || inn.tagName.toLowerCase() !== 'inning') return;
+      var innNum = parseInt(inn.getAttribute('number') || '0');
+      if (!innNum) return;
+
+      var bname  = play.getAttribute('batter') || '';
+      var narr   = play.querySelector('narrative');
+      var narrT  = narr ? (narr.getAttribute('text') || '') : '';
+      var bEl    = play.querySelector('batter');
+      recordPlay(bname, innNum, narrT, bEl);
+    });
+
+    return map;
+  }
+
+  // fieldPos: extract fielder position number from location string
+  function fieldPos(loc) {
+    if (!loc) return '';
+    var l = (loc || '').toLowerCase().trim();
+    if (l.indexOf('center') > -1) return '8';
+    var pm = {'p':'1','pitcher':'1','c':'2','catcher':'2','1b':'3','first base':'3','first':'3',
+              '2b':'4','second base':'4','second':'4','3b':'5','third base':'5','third':'5',
+              'ss':'6','shortstop':'6','short':'6','lf':'7','left field':'7',
+              'cf':'8','center field':'8','rf':'9','right field':'9'};
+    // Try longest match first
+    var keys = Object.keys(pm).sort(function(a,b){return b.length-a.length;});
+    for (var i=0;i<keys.length;i++) {
+      if (l.indexOf(keys[i]) === 0) return pm[keys[i]];
+    }
+    return '';
+  }
+
+  function codeToSym(code, narr) {
+    var c = (code || '').toUpperCase();
+    var n = (narr || '').toLowerCase();
+
+    // Extract location description from narrative for position suffix
+    // Strip batter name, parens, runner info
+    var loc = '';
+    var locMatch = n.replace(/^[^a-z]*[a-z,. ]+ (flied|lined|fouled|grounded|popped|singled|doubled|tripled|homered)/,'')
+                    .replace(/\s*\([^)]*\)\s*/,'').replace(/;.*$/,'').replace(/,.*$/,'').trim();
+
+    // Parse inline from narrative when we have it
+    if (/struck out/.test(n))     return /looking/.test(n) ? 'KL' : 'K';
+    if (/hit by pitch/.test(n))   return 'HBP';
+    if (/walked/.test(n))         return 'BB';
+    if (/intentionally walked|was intentionally walked/.test(n)) return 'IBB';
+    if (/homered/.test(n))        return 'HR';
+    if (/tripled/.test(n))        return '3B';
+    if (/doubled/.test(n)) {
+      if (/ground.rule|ground rule/.test(n)) return 'GRD';
+      return '2B';
+    }
+    if (/singled/.test(n))        return '1B';
+    if (/grounded into double play|lined into double play/.test(n)) return 'GDP';
+    if (/infield fly/.test(n))    { var p=fieldPos(n.replace(/.*infield fly\s*(to\s*)?/,'')); return 'IFF'+(p?p:''); }
+    if (/grounded out/.test(n))   { var p=fieldPos(n.replace(/.*grounded out\s*(to\s*)?/,'').replace(/,.*$|\..*$/,'')); return 'G'+(p?p:''); }
+    if (/flied out/.test(n)) {
+      if (/sacrifice fly|\bsf\b/.test(n)) return 'SF';
+      var p=fieldPos(n.replace(/.*flied out\s*(to\s*)?/,'').replace(/,.*$|\..*$/,'')); return 'F'+(p?p:'');
+    }
+    if (/fouled out/.test(n))     { var p=fieldPos(n.replace(/.*fouled out\s*(to\s*)?/,'').replace(/,.*$|\..*$/,'')); return 'F'+(p?p:''); }
+    if (/lined out/.test(n))      { var p=fieldPos(n.replace(/.*lined out\s*(to\s*)?/,'').replace(/,.*$|\..*$/,'')); return 'L'+(p?p:''); }
+    if (/popped up/.test(n) || /popped out/.test(n)) { var p=fieldPos(n.replace(/.*popped (up|out)\s*(to\s*)?/,'').replace(/,.*$|\..*$/,'')); return 'P'+(p?p:''); }
+    if (/fielder.s choice/.test(n))   return 'FC';
+    if (/reached.*(error|muffed)/.test(n)) return 'E';
+    if (/batter.s interference/.test(n))   return 'KI';
+    if (/sacrifice bunt|sac bunt/.test(n)) return 'SH';
+    if (/out at (first|second|third|home)/.test(n)) return 'FC';
+    if (/sacrifice fly/.test(n))  return 'SF';
+
+    // Fall back to action code
+    if (c === 'K' || c === 'KL')  return /looking/.test(n) ? 'KL' : 'K';
+    if (c === 'HBP')  return 'HBP';
+    if (c === 'BB' || c === 'IBB') return c;
+    if (c === 'HR')   return 'HR';
+    if (/^3/.test(c)) return '3B';
+    if (/^2/.test(c)) return '2B';
+    if (c === '1B' || c === 'S') return '1B';
+    if (c.indexOf('GDP') > -1)   return 'GDP';
+    if (c === 'FC')   return 'FC';
+    if (/^E/.test(c)) return 'E';
+    if (c === 'SF' || /^SF/.test(c)) return 'SF';
+    if (/^SH/.test(c)) return 'SH';
+    if (/^G/.test(c)) return 'G';
+    if (/^F/.test(c)) return 'F';
+    if (/^L/.test(c)) return 'L';
+    if (/^P/.test(c)) return 'P';
+    return null;
+  }
+
+  function symColor(sym) {
+    if (!sym) return '#444';
+    var s = sym.toUpperCase();
+    if (s === 'HR' || s === 'GRD')  return '#f5a623';
+    if (s === '3B' || s === '2B' || s === '1B') return '#00c97a';
+    if (s === 'K' || s === 'KL' || s === 'KI') return '#ff4444';
+    if (s === 'GDP')  return '#ff6666';
+    if (s === 'BB' || s === 'IBB' || s === 'HBP') return '#888';
+    if (s === 'SF' || s === 'SH')   return '#aaa';
+    if (s.charAt(0) === 'E')        return '#ff8c00';
+    if (s === 'FC')                 return '#888';
+    // Outs — flyout (F), groundout (G), lineout (L), popup (P), IFF
+    if (s.charAt(0) === 'F' || s.charAt(0) === 'G' ||
+        s.charAt(0) === 'L' || s.charAt(0) === 'P' ||
+        s.indexOf('IFF') === 0)     return '#556';
+    return '#555';
+  }
+
+  function buildGrid(players, teamName, side, paMap) {
+    if (!players || !players.length) return '';
+
+    var color   = side === 'vis' ? 'var(--vis-primary)' : 'var(--hom-primary)';
+    var lineup  = players.filter(function(p){ return p.spot >= 1 && p.spot <= 9; })
+                         .sort(function(a,b){ return a.spot - b.spot; });
+    var extras  = players.filter(function(p){
+      return (p.spot === 0 || p.spot > 9) && (p.ab > 0 || p.bb > 0 || p.r > 0);
+    });
+    var allRows = lineup.concat(extras);
+
+    // Max innings
+    var maxInn = 9;
+    allRows.forEach(function(p) {
+      if (paMap[p.short] || paMap[p.name]) {
+        var pm = paMap[p.short] || paMap[p.name] || {};
+        Object.keys(pm).forEach(function(k){ if (parseInt(k) > maxInn) maxInn = parseInt(k); });
+      }
+    });
+    Object.keys(paMap).forEach(function(bname) {
+      Object.keys(paMap[bname]).forEach(function(k){ if (parseInt(k) > maxInn) maxInn = parseInt(k); });
+    });
+
+    var inns = [];
+    for (var i = 1; i <= maxInn; i++) inns.push(i);
+
+    // Totals
+    var totAb=0,totR=0,totH=0,totRbi=0,totBb=0,totSo=0;
+    allRows.forEach(function(p){
+      totAb+=p.ab||0; totR+=p.r||0; totH+=p.h||0;
+      totRbi+=p.rbi||0; totBb+=p.bb||0; totSo+=p.so||0;
+    });
+
+    var cellW = '28px';  // narrower inning columns
+    var th = 'style="background:#111;border:1px solid #222;padding:4px 2px;text-align:center;' +
+             'font-size:12px;letter-spacing:0.5px;color:#666;font-family:monospace;white-space:nowrap;"';
+    var td = 'style="border:1px solid #1a1a1a;padding:3px 2px;text-align:center;vertical-align:middle;' +
+             'min-width:' + cellW + ';height:36px;"';
+    var tdStat = 'style="border:1px solid #1a1a1a;padding:3px 6px;text-align:center;vertical-align:middle;' +
+                 'font-size:13px;font-family:monospace;color:#aaa;white-space:nowrap;"';
+    var tdName = 'style="border:1px solid #1a1a1a;padding:4px 10px;text-align:left;vertical-align:middle;' +
+                 'font-size:13px;font-family:monospace;white-space:nowrap;"';
+
+    var html = '<div style="margin-bottom:20px;">';
+    // Team header
+    html += '<div style="font-family:Oswald,sans-serif;font-size:15px;font-weight:800;' +
+            'letter-spacing:2px;text-transform:uppercase;color:' + color + ';' +
+            'padding:5px 8px;border-left:3px solid ' + color + ';margin-bottom:4px;">' +
+            teamName + '</div>';
+
+    html += '<table style="border-collapse:collapse;width:100%;">';
+
+    // Header row
+    html += '<thead><tr>';
+    html += '<th ' + th + ' style="background:#111;border:1px solid #222;padding:4px 8px;text-align:left;font-size:12px;color:#666;font-family:monospace;">LINEUP</th>';
+    html += '<th ' + th + '>POS</th>';
+    inns.forEach(function(n){ html += '<th ' + th + '>' + n + '</th>'; });
+    html += '<th ' + th + '>AB</th>';
+    html += '<th ' + th + '>R</th>';
+    html += '<th ' + th + '>H</th>';
+    html += '<th ' + th + '>RBI</th>';
+    html += '<th ' + th + '>BB</th>';
+    html += '<th ' + th + '>SO</th>';
+    html += '</tr></thead><tbody>';
+
+    allRows.forEach(function(p, idx) {
+      var isExtra = p.spot === 0 || p.spot > 9;
+      var rowBg   = idx % 2 === 0 ? 'background:#0d0d0d;' : 'background:#111;';
+      if (isExtra) rowBg = 'background:#0a0a0a;opacity:0.75;';
+
+      // Resolve name via aliases then get PA data
+      var pm = {};
+      var _aliases = paMap.__aliases__ || {};
+      var _lookupKeys2 = nameKeys(p.short).concat(nameKeys(p.name));
+      for (var li2 = 0; li2 < _lookupKeys2.length; li2++) {
+        var _k2 = _lookupKeys2[li2];
+        var _resolved = _aliases[_k2] || _k2;
+        if (paMap[_resolved] && paMap[_resolved] !== paMap.__aliases__) {
+          pm = paMap[_resolved]; break;
+        }
+      }
+
+      html += '<tr style="' + rowBg + '">';
+      // Name cell
+      html += '<td ' + tdName + '>';
+      html += '<span style="color:' + color + ';font-weight:700;margin-right:6px;">' + p.uni + '</span>';
+      html += '<span style="color:#ccc;">' + p.name + '</span>';
+      if (isExtra) html += ' <span style="color:#444;font-size:11px;">(SUB)</span>';
+      html += '</td>';
+      // Pos
+      html += '<td ' + tdStat + ' style="border:1px solid #1a1a1a;padding:3px 4px;text-align:center;vertical-align:middle;font-size:12px;font-family:monospace;color:#666;">' + (p.pos||'—') + '</td>';
+
+      // Inning cells
+      inns.forEach(function(n) {
+        var sym = pm[n];
+        if (sym) {
+          var parts = sym.split('/');
+          var cellContent = parts.map(function(s) {
+            var sc = symColor(s);
+            var fw = (s === 'HR' || s === '3B' || s === '2B' || s === '1B') ? '700' : '600';
+            return '<span style="color:' + sc + ';font-weight:' + fw + ';font-size:12px;font-family:monospace;">' + s + '</span>';
+          }).join('<span style="color:#333;font-size:10px;">/</span>');
+          html += '<td ' + td + '>' + cellContent + '</td>';
+        } else {
+          html += '<td ' + td + '><span style="color:#1e1e1e;font-size:16px;">·</span></td>';
+        }
+      });
+
+      // Stat columns
+      var hBold = (p.h > 0) ? 'font-weight:700;color:#fff;' : '';
+      var rBold = (p.r > 0) ? 'color:#00c97a;' : '';
+      var rbiBold = (p.rbi > 0) ? 'color:#00c97a;' : '';
+      html += '<td ' + tdStat + '>' + (p.ab||0) + '</td>';
+      html += '<td style="border:1px solid #1a1a1a;padding:3px 5px;text-align:center;vertical-align:middle;font-size:13px;font-family:monospace;' + rBold + '">' + (p.r||0) + '</td>';
+      html += '<td style="border:1px solid #1a1a1a;padding:3px 5px;text-align:center;vertical-align:middle;font-size:13px;font-family:monospace;' + hBold + '">' + (p.h||0) + '</td>';
+      html += '<td style="border:1px solid #1a1a1a;padding:3px 5px;text-align:center;vertical-align:middle;font-size:13px;font-family:monospace;' + rbiBold + '">' + (p.rbi||0) + '</td>';
+      html += '<td ' + tdStat + '>' + (p.bb||0) + '</td>';
+      html += '<td ' + tdStat + '>' + (p.so||0) + '</td>';
+      html += '</tr>';
+    });
+
+    // Totals row
+    html += '<tr style="border-top:2px solid #333;background:#0a0a0a;">';
+    html += '<td colspan="2" ' + tdName + ' style="border:1px solid #1a1a1a;padding:3px 8px;text-align:left;vertical-align:middle;font-size:12px;font-family:monospace;color:#555;font-weight:700;">TOTALS</td>';
+    inns.forEach(function(){ html += '<td ' + td + '></td>'; });
+    html += '<td ' + tdStat + ' style="border:1px solid #1a1a1a;padding:3px 5px;text-align:center;vertical-align:middle;font-size:13px;font-family:monospace;color:#fff;font-weight:700;">' + totAb + '</td>';
+    html += '<td ' + tdStat + ' style="border:1px solid #1a1a1a;padding:3px 5px;text-align:center;vertical-align:middle;font-size:13px;font-family:monospace;color:#fff;font-weight:700;">' + totR + '</td>';
+    html += '<td ' + tdStat + ' style="border:1px solid #1a1a1a;padding:3px 5px;text-align:center;vertical-align:middle;font-size:13px;font-family:monospace;color:#fff;font-weight:700;">' + totH + '</td>';
+    html += '<td ' + tdStat + ' style="border:1px solid #1a1a1a;padding:3px 5px;text-align:center;vertical-align:middle;font-size:13px;font-family:monospace;color:#fff;font-weight:700;">' + totRbi + '</td>';
+    html += '<td ' + tdStat + ' style="border:1px solid #1a1a1a;padding:3px 5px;text-align:center;vertical-align:middle;font-size:13px;font-family:monospace;color:#fff;font-weight:700;">' + totBb + '</td>';
+    html += '<td ' + tdStat + ' style="border:1px solid #1a1a1a;padding:3px 5px;text-align:center;vertical-align:middle;font-size:13px;font-family:monospace;color:#fff;font-weight:700;">' + totSo + '</td>';
+    html += '</tr>';
+
+    html += '</tbody></table></div>';
+    return html;
+  }
+
+  var visPaMap = buildPaMap('V');
+  var homPaMap = buildPaMap('H');
+
+  var html = '<div style="padding:8px;overflow-x:auto;">';
+  html += buildGrid(window._lastVisPlayers, visName, 'vis', visPaMap);
+  html += '<div style="border-top:2px solid #222;margin:8px 0;"></div>';
+  html += buildGrid(window._lastHomPlayers, homName, 'hom', homPaMap);
+  html += '</div>';
+  wrap.innerHTML = html;
+}
+
+
 
 </script>
