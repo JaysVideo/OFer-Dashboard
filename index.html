@@ -2211,9 +2211,13 @@ function buildOfer(p) {
   const { ab, h, rbi, r, so, bb, s, d, t, hr, gidp, sb, sf, roe } = p;
 
   // RULE 3: No official AB recorded yet — never show 0-0
+  // Combine all no-AB contributions: SF, Walk, HBP
   if (ab === 0 && h === 0) {
-    if (sf > 0) return { text:'Sac Fly', cls:'neu' };           // RULE 8
-    if (bb > 0) return { text: bb===1?'Walk':`${bb} Walks`, cls:'neu' };
+    const parts0 = [];
+    if (sf > 0)  parts0.push(sf===1 ? 'Sac Fly' : `${sf} Sac Flies`);   // RULE 8
+    if (bb > 0)  parts0.push(bb===1 ? 'Walk'     : `${bb} Walks`);
+    if ((p.hbp||0) > 0) parts0.push((p.hbp||0)===1 ? 'HBP' : `${p.hbp} HBP`);
+    if (parts0.length > 0) return { text: parts0.join(', '), cls:'neu' };
     return { text:'—', cls:'emp' };
   }
 
