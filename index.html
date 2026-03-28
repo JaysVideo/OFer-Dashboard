@@ -1710,13 +1710,15 @@ function parseGame(xmlText) {
         // Delay escalator render by 3s to let flash play first
         const capturedBtr   = curBtr;
         const capturedTopBot = topBot;
+        const capturedLastVis = prevLastBatter.vis;
+        const capturedLastHom = prevLastBatter.hom;
         setTimeout(() => {
-          renderRoster('visRoster', 'vis', visPlayers, capturedBtr, capturedTopBot === 'V', true);
-          renderRoster('homRoster', 'hom', homPlayers, capturedBtr, capturedTopBot === 'H', true);
+          renderRoster('visRoster', 'vis', visPlayers, capturedBtr, capturedTopBot === 'V', true, capturedLastVis);
+          renderRoster('homRoster', 'hom', homPlayers, capturedBtr, capturedTopBot === 'H', true, capturedLastHom);
         }, 2800);
       } else {
-        renderRoster('visRoster', 'vis', visPlayers, curBtr, topBot === 'V', true);
-        renderRoster('homRoster', 'hom', homPlayers, curBtr, topBot === 'H', true);
+        renderRoster('visRoster', 'vis', visPlayers, curBtr, topBot === 'V', true, prevLastBatter.vis);
+        renderRoster('homRoster', 'hom', homPlayers, curBtr, topBot === 'H', true, prevLastBatter.hom);
       }
     } else {
       renderRoster('visRoster', 'vis', visPlayers, curBtr, topBot === 'V', false, prevLastBatter.vis);
@@ -1728,6 +1730,28 @@ function parseGame(xmlText) {
       const prevSide = prevBatterSide || topBot;
       if (prevSide === 'V') prevLastBatter.vis = prevBatter;
       else                   prevLastBatter.hom = prevBatter;
+    }
+    // On initial load (prevBatter empty), seed prevLastBatter from PBP
+    // Find the most recent batter before curBtr in play sequence
+    if (!prevBatter && curBtr) {
+      const allPlays = [...xml.querySelectorAll('play')];
+      let foundLast = '';
+      for (let pi = allPlays.length - 1; pi >= 0; pi--) {
+        const pb = allPlays[pi].getAttribute('batter') || '';
+        if (pb && pb.toLowerCase() !== curBtr.toLowerCase()) {
+          // Check it's not a sub/runner play
+          const pn = allPlays[pi].querySelector('narrative');
+          const pnt = pn ? pn.getAttribute('text') : '';
+          if (!isSub(pnt) && !pnt.toLowerCase().includes('no play')) {
+            foundLast = pb;
+            break;
+          }
+        }
+      }
+      if (foundLast) {
+        if (topBot === 'V') prevLastBatter.vis = foundLast;
+        else                 prevLastBatter.hom = foundLast;
+      }
     }
     prevBatter     = curBtr;
     prevBatterSide = topBot;
