@@ -1713,8 +1713,7 @@ function parsePlayers(teamEl) {
       hasHitTypes,
       sb  : n(hit?.getAttribute('sb')),
       gidp: n(hit?.getAttribute('gdp') || hit?.getAttribute('gidp')),
-      roe : n(hit?.getAttribute('roe') || hit?.getAttribute('rcherr')),
-      fc  : n(hit?.getAttribute('fc')),
+      roe : n(hit?.getAttribute('roe')),
       savg: sea?.getAttribute('avg') || '',
       shr : n(sea?.getAttribute('hr')),
       srbi: n(sea?.getAttribute('rbi')),
@@ -2229,7 +2228,7 @@ function sb(lbl, val) {
 // ESPN 0-FER ENGINE — strict guide compliance
 // ════════════════════════════════════════════════════════════════════════════
 function buildOfer(p) {
-  const { ab, h, rbi, r, so, bb, s, d, t, hr, gidp, sb, sf, roe, fc } = p;
+  const { ab, h, rbi, r, so, bb, s, d, t, hr, gidp, sb, sf, roe } = p;
   const hbp = p.hbp || 0;
 
   // ── RULE 3: ab=0 — never show 0-0 ────────────────────────────────────────
@@ -2318,14 +2317,13 @@ function buildOfer(p) {
   }
 
   // ── 0-FER ─────────────────────────────────────────────────────────────────
-  // RULE 1: Show ONLY K, GIDP, Sac Fly, ROE, FC in a 0-fer
+  // RULE 1: Show ONLY K, GIDP, Sac Fly, ROE in a 0-fer
   // RULE 2: Strikeouts drop the moment ANY positive info exists (handled — h=0 here)
   const neg = [];
   if (so   > 0) neg.push(so===1   ? 'Strikeout'       : `${so} Strikeouts`);
   if (gidp > 0) neg.push('GIDP');
   if (sf   > 0) neg.push(sf===1   ? 'Sac Fly'         : `${sf} Sac Flies`);
   if (roe  > 0) neg.push('Reached on Error');
-  if (fc   > 0) neg.push(fc===1   ? "Fielder's Choice" : `${fc} Fielder's Choices`);
   // RULE 1: HBP and BB not shown in 0-fer
 
   if (neg.length) return { text:`${abStr} (${neg.join(', ')})`, cls:'neg' };
