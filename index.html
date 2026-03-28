@@ -1848,6 +1848,10 @@ function parseNarrativeAction(narrative, batterName) {
     var loc = t.replace(/infield fly\s*(to\s*)?/,'').replace(/,.*$/,'').trim();
     return { action:'P',  decision:'P',  desc: loc ? 'to ' + loc : '' };
   }
+  // Check sac bunt BEFORE grounded out — "grounded out to p, SAC, bunt" = SH
+  if (/grounded out/.test(t) && /\bsac\b|\bbunt\b|sacrifice bunt|sac bunt/.test(t)) {
+    return { action:'SH', decision:'SH', desc:'' };
+  }
   if (/grounded out/.test(t)) {
     var loc = t.replace(/grounded out\s*(to\s*)?/,'').replace(/,.*$/,'').trim();
     var gnum = fieldPos(loc);
@@ -3300,6 +3304,8 @@ function renderScorecard() {
     if (/singled/.test(n))        return '1B';
     if (/grounded into double play|lined into double play/.test(n)) return 'GDP';
     if (/infield fly/.test(n))    { var p=fieldPos(n.replace(/.*infield fly\s*(to\s*)?/,'')); return 'IFF'+(p?p:''); }
+    // SAC bunt check BEFORE grounded out
+    if (/grounded out/.test(n) && /\bsac\b|\bbunt\b|sacrifice bunt/.test(n)) return 'SH';
     if (/grounded out/.test(n))   { var p=fieldPos(n.replace(/.*grounded out\s*(to\s*)?/,'').replace(/,.*$|\..*$/,'')); return 'G'+(p?p:''); }
     if (/flied out/.test(n)) {
       if (/sacrifice fly|\bsf\b/.test(n)) return 'SF';
