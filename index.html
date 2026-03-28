@@ -1737,6 +1737,23 @@ function parsePlayers(teamEl) {
 // Parses StatBroadcast narrative strings when no <batter> element exists
 // e.g. "Smith hit by pitch (1-1 BK)" → { action:'HBP', decision:'HBP', desc:'' }
 // ════════════════════════════════════════════════════════════════════════════
+// fieldPos: extract fielder position number from location string
+// Global so parseNarrativeAction, codeToSym and buildPaMap can all use it
+function fieldPos(loc) {
+  if (!loc) return '';
+  var l = (loc || '').toLowerCase().trim();
+  if (l.indexOf('center') > -1) return '8';
+  var pm = {'p':'1','pitcher':'1','c':'2','catcher':'2','1b':'3','first base':'3','first':'3',
+            '2b':'4','second base':'4','second':'4','3b':'5','third base':'5','third':'5',
+            'ss':'6','shortstop':'6','short':'6','lf':'7','left field':'7',
+            'cf':'8','center field':'8','rf':'9','right field':'9'};
+  var keys = Object.keys(pm).sort(function(a,b){return b.length-a.length;});
+  for (var i=0;i<keys.length;i++) {
+    if (l.indexOf(keys[i]) === 0) return pm[keys[i]];
+  }
+  return '';
+}
+
 function parseNarrativeAction(narrative, batterName) {
   if (!narrative) return null;
   var text = narrative.trim();
@@ -3224,22 +3241,7 @@ function renderScorecard() {
     return map;
   }
 
-  // fieldPos: extract fielder position number from location string
-  function fieldPos(loc) {
-    if (!loc) return '';
-    var l = (loc || '').toLowerCase().trim();
-    if (l.indexOf('center') > -1) return '8';
-    var pm = {'p':'1','pitcher':'1','c':'2','catcher':'2','1b':'3','first base':'3','first':'3',
-              '2b':'4','second base':'4','second':'4','3b':'5','third base':'5','third':'5',
-              'ss':'6','shortstop':'6','short':'6','lf':'7','left field':'7',
-              'cf':'8','center field':'8','rf':'9','right field':'9'};
-    // Try longest match first
-    var keys = Object.keys(pm).sort(function(a,b){return b.length-a.length;});
-    for (var i=0;i<keys.length;i++) {
-      if (l.indexOf(keys[i]) === 0) return pm[keys[i]];
-    }
-    return '';
-  }
+  // fieldPos is defined globally above renderScorecard
 
   function codeToSym(code, narr) {
     var c = (code || '').toUpperCase();
