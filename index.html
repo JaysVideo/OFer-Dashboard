@@ -2225,19 +2225,29 @@ function renderRoster(elId, side, players, curBtr, isThisBatting, animate=false,
   const lastBtrCard = lastBtrPlayers.length ? (() => {
     const p = lastBtrPlayers[0];
     const ofer = buildOfer(p);
-    const parenIdx = ofer.text.indexOf('(');
-    const scorePart = parenIdx > -1 ? ofer.text.substring(0, parenIdx).trim() : ofer.text;
+    const parenIdx   = ofer.text.indexOf('(');
+    const scorePart  = parenIdx > -1 ? ofer.text.substring(0, parenIdx).trim() : ofer.text;
     const detailPart = parenIdx > -1 ? ofer.text.substring(parenIdx).toUpperCase() : '';
     const ofHtml = ofer.cls === 'emp' ? '<span class="ofer-val emp">—</span>'
       : '<span class="ofer-val ' + ofer.cls + '"><span class="ofer-score">' + gameLabel + ': ' + scorePart + '</span>'
         + (detailPart ? ' <span class="ofer-detail">' + detailPart + '</span>' : '') + '</span>';
-    return '<div class="pcard" style="opacity:0.65;">'
+    // Copy value — same as main cards, respects manual override
+    const manualKey = 'manual_' + side + '_' + p.uni;
+    const manualVal = window._manualOverrides?.[manualKey] || '';
+    const rawCopy   = detailPart || (ofer.text && ofer.text !== '—' ? '(' + ofer.text.toUpperCase() + ')' : '');
+    const copyVal   = (manualVal || rawCopy).replace(/'/g, "&#39;").replace(/"/g, "&quot;");
+    const spotLbl   = (p.spot >= 1 && p.spot <= 9)
+      ? '<span class="batting-spot-lbl">BATTING: ' + spotOrdinal(p.spot) + '</span>' : '';
+    return '<div class="pcard" style="opacity:0.7;">'
       + '<div class="pcard-hdr"><div class="pcard-hdr-left">'
       + '<span class="p-uni">#' + p.uni + '</span>'
       + '<span class="p-name">' + p.name + '</span>'
       + '<span class="p-pos">' + (p.pos||'—') + '</span>'
       + '</div><div class="pcard-hdr-right"><span class="queue-lbl" style="color:#555;">LAST AB</span></div></div>'
-      + '<div class="graphic-body"><div class="content-area"><div class="ofer-row">' + ofHtml + '</div></div></div>'
+      + '<div class="graphic-body"><div class="content-area"><div class="ofer-row">'
+      + ofHtml + spotLbl
+      + '<button class="copy-btn" onclick="copyIt(this,\'' + copyVal + '\')">COPY</button>'
+      + '</div></div></div>'
       + '</div>';
   })() : '';
 
