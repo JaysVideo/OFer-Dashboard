@@ -1699,6 +1699,25 @@ function parseGame(xmlText) {
     const halfChanged    = topBot !== prevTopBot;
     const batterChanged  = curBtr && prevBatter && curBtr !== prevBatter && !halfChanged;
 
+    // Count actual PA plays in the current half-inning
+    // A play counts if it has a narrative starting with a batter name (not sub/runner)
+    // Used to suppress pulse until at least 1 play has occurred this half
+    let playsThisHalf = 0;
+    const curInnEl = xml.querySelector('inning[number="' + inning + '"]');
+    if (curInnEl) {
+      const curBatEl = [...curInnEl.querySelectorAll('batting')].find(b => b.getAttribute('vh') === topBot);
+      if (curBatEl) {
+        curBatEl.querySelectorAll('play').forEach(play => {
+          const narr = play.querySelector('narrative');
+          const narrT = narr ? narr.getAttribute('text') : '';
+          if (narrT && !isSub(narrT) && narrT.toLowerCase() !== 'no play.' && !narrT.toLowerCase().includes('no play')) {
+            playsThisHalf++;
+          }
+        });
+      }
+    }
+    const halfHasPlays = playsThisHalf > 0;
+
     if (batterChanged) {
       // The previous batter just finished their PA — show their result
       const result = getAtBatResult(
@@ -1713,16 +1732,16 @@ function parseGame(xmlText) {
         const capturedLastVis = prevLastBatter.vis;
         const capturedLastHom = prevLastBatter.hom;
         setTimeout(() => {
-          renderRoster('visRoster', 'vis', visPlayers, capturedBtr, capturedTopBot === 'V', true, capturedLastVis);
-          renderRoster('homRoster', 'hom', homPlayers, capturedBtr, capturedTopBot === 'H', true, capturedLastHom);
+          renderRoster('visRoster', 'vis', visPlayers, capturedBtr, capturedTopBot === 'V', true, capturedLastVis, true);
+          renderRoster('homRoster', 'hom', homPlayers, capturedBtr, capturedTopBot === 'H', true, capturedLastHom, true);
         }, 2800);
       } else {
-        renderRoster('visRoster', 'vis', visPlayers, curBtr, topBot === 'V', true, prevLastBatter.vis);
-        renderRoster('homRoster', 'hom', homPlayers, curBtr, topBot === 'H', true, prevLastBatter.hom);
+        renderRoster('visRoster', 'vis', visPlayers, curBtr, topBot === 'V', true, prevLastBatter.vis, true);
+        renderRoster('homRoster', 'hom', homPlayers, curBtr, topBot === 'H', true, prevLastBatter.hom, true);
       }
     } else {
-      renderRoster('visRoster', 'vis', visPlayers, curBtr, topBot === 'V', false, prevLastBatter.vis);
-      renderRoster('homRoster', 'hom', homPlayers, curBtr, topBot === 'H', false, prevLastBatter.hom);
+      renderRoster('visRoster', 'vis', visPlayers, curBtr, topBot === 'V', false, prevLastBatter.vis, halfHasPlays);
+      renderRoster('homRoster', 'hom', homPlayers, curBtr, topBot === 'H', false, prevLastBatter.hom, halfHasPlays);
     }
 
     // Track last batter per side for the divider display
@@ -2210,7 +2229,7 @@ function escalatorSort(players, curBtr, isThisBatting, side) {
 // ════════════════════════════════════════════════════════════════════════════
 // RENDER
 // ════════════════════════════════════════════════════════════════════════════
-function renderRoster(elId, side, players, curBtr, isThisBatting, animate=false, lastBtr='') {
+function renderRoster(elId, side, players, curBtr, isThisBatting, animate=false, lastBtr='', halfHasPlays=false) {
   const el = document.getElementById(elId);
   if (!players.length) {
     el.innerHTML = '<div class="empty"><div class="ico">—</div>NO DATA</div>';
@@ -2267,7 +2286,7 @@ function renderRoster(elId, side, players, curBtr, isThisBatting, animate=false,
   }
 
   el.innerHTML = renderOrder.map((p, idx) => {
-    const isCur = isThisBatting && matchBatter(curBtr, [p]) >= 0;
+    const isCur = isThisBatting && halfHasPlays && matchBatter(curBtr, [p]) >= 0;
 
     let qLabel = '';
     if (isThisBatting && p.spot > 0) {
