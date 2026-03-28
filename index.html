@@ -1528,6 +1528,34 @@ function parseGame(xmlText) {
     });
     window._lastPlayMap = lastPlayMap;
 
+    // Build per-player FC and ROE counts from play-by-play
+    // (StatBroadcast doesn't write these to hitting stats)
+    const fcMap  = {};
+    const roeMap = {};
+    xml.querySelectorAll('play').forEach(play => {
+      const bName    = play.getAttribute('batter') || '';
+      if (!bName) return;
+      const narrative = play.querySelector('narrative');
+      const narrText  = narrative ? narrative.getAttribute('text') : '';
+      if (!narrText) return;
+
+      // Skip runner/sub plays
+      const nl = narrText.toLowerCase();
+      if (isSub(narrText) || 'no play' === nl.trim() || 'mound visit' === nl) return;
+      const bLast = bName.split(',')[0].toLowerCase();
+      if (!nl.startsWith(bName.toLowerCase()) && !nl.startsWith(bLast)) return;
+
+      const parsed = parseNarrativeAction(narrText, bName);
+      if (!parsed) return;
+
+      nameKeys(bName).forEach(k => {
+        if (parsed.action === 'FC') fcMap[k]  = (fcMap[k]  || 0) + 1;
+        if (parsed.action === 'E')  roeMap[k] = (roeMap[k] || 0) + 1;
+      });
+    });
+    window._fcMap  = fcMap;
+    window._roeMap = roeMap;
+
 
 
     // Players
@@ -1713,7 +1741,10 @@ function parsePlayers(teamEl) {
       hasHitTypes,
       sb  : n(hit?.getAttribute('sb')),
       gidp: n(hit?.getAttribute('gdp') || hit?.getAttribute('gidp')),
-      roe : n(hit?.getAttribute('roe')),
+      // ROE and FC: StatBroadcast doesn't write these to hitting stats
+      // Derive from play-by-play maps built during lastPlayMap construction
+      roe : (function(){ const ks = nameKeys(short||name); return ks.reduce((v,k) => v||(window._roeMap&&window._roeMap[k]),0)||n(hit?.getAttribute('roe')); })(),
+      fc  : (function(){ const ks = nameKeys(short||name); return ks.reduce((v,k) => v||(window._fcMap &&window._fcMap[k]), 0)||0; })(),
       savg: sea?.getAttribute('avg') || '',
       shr : n(sea?.getAttribute('hr')),
       srbi: n(sea?.getAttribute('rbi')),
@@ -2245,7 +2276,7 @@ function sb(lbl, val) {
 // ESPN 0-FER ENGINE — strict guide compliance
 // ════════════════════════════════════════════════════════════════════════════
 function buildOfer(p) {
-  const { ab, h, rbi, r, so, bb, s, d, t, hr, gidp, sb, sf, roe } = p;
+  const { ab, h, rbi, r, so, bb, s, d, t, hr, gidp, sb, sf, roe, fc } = p;
   const hbp = p.hbp || 0;
 
   // ── RULE 3: ab=0 — never show 0-0 ────────────────────────────────────────
