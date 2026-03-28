@@ -243,15 +243,16 @@
   }
   .pcard.at-bat{ filter:drop-shadow(0 3px 14px rgba(0,0,0,0.9)); }
   /* Pulsing outline when order is locked */
-  .order-locked .pcard.at-bat {
+  /* Pulsing outline always active on current batter */
+  .pcard.at-bat {
     animation: pulseOutline 1.8s ease-in-out infinite;
   }
   @keyframes pulseOutline {
-    0%,100% { box-shadow: 0 0 0 0 rgba(var(--team-primary-rgb,245,166,35), 0.0), 0 0 0 2px rgba(var(--team-primary-rgb,245,166,35),0.7); }
-    50%      { box-shadow: 0 0 0 6px rgba(var(--team-primary-rgb,245,166,35), 0.0), 0 0 0 2px rgba(var(--team-primary-rgb,245,166,35),0.25); }
+    0%,100% { box-shadow: 0 0 0 2px rgba(var(--team-primary-rgb,245,166,35),0.7); }
+    50%      { box-shadow: 0 0 0 5px rgba(var(--team-primary-rgb,245,166,35),0.12); }
   }
-  .t-panel.vis.order-locked .pcard.at-bat { --team-primary-rgb: var(--vis-primary-rgb, 245,166,35); }
-  .t-panel.hom.order-locked .pcard.at-bat { --team-primary-rgb: var(--hom-primary-rgb, 245,166,35); }
+  .t-panel.vis .pcard.at-bat { --team-primary-rgb: var(--vis-primary-rgb, 245,166,35); }
+  .t-panel.hom .pcard.at-bat { --team-primary-rgb: var(--hom-primary-rgb, 245,166,35); }
   /* Last-batter separator */
   .last-batter-divider {
     display: flex; align-items: center; gap: 8px;
@@ -265,14 +266,14 @@
   /* RHE bar on team header */
   .t-hdr { display: flex; align-items: center; justify-content: space-between; padding: 4px 10px; }
   .rhe-strip {
-    display: flex; gap: 10px; font-family: 'Share Tech Mono', monospace;
+    display: flex; gap: 14px; font-family: 'Share Tech Mono', monospace;
     font-size: 11px; color: #666; letter-spacing: 1px;
   }
-  .rhe-cell { display: flex; flex-direction: column; align-items: center; gap: 1px; }
-  .rhe-val  { font-size: 15px; font-weight: 700; color: #ccc; line-height: 1; }
+  .rhe-cell { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .rhe-val  { font-size: 26px; font-weight: 700; color: #ccc; line-height: 1; }
   .rhe-val.rhe-r { color: #00c97a; }
   .rhe-val.rhe-e { color: #ff8c00; }
-  .rhe-lbl  { font-size: 8px; color: #444; letter-spacing: 2px; }
+  .rhe-lbl  { font-size: 9px; color: #555; letter-spacing: 3px; }
   /* Order lock toggle button */
   .order-lock-btn {
     background: none; border: 1px solid #2a2a2a; border-radius: 4px;
@@ -1289,6 +1290,10 @@ function applySideColors(side, colors) {
   const root = document.documentElement;
   root.style.setProperty(`--${side}-primary`, colors.primary);
   root.style.setProperty(`--${side}-dark`,    colors.dark);
+  // Convert hex to RGB triplet for CSS custom property (used in pulse animation)
+  const _hex = colors.primary.replace('#','');
+  const _r = parseInt(_hex.substring(0,2),16), _g = parseInt(_hex.substring(2,4),16), _b = parseInt(_hex.substring(4,6),16);
+  if (!isNaN(_r)) root.style.setProperty(`--${side}-primary-rgb`, `${_r},${_g},${_b}`);
   // Sync color picker swatch to match
   const picker = document.getElementById(side + 'ColorPicker');
   if (picker) picker.value = colors.primary;
@@ -2191,7 +2196,7 @@ function renderRoster(elId, side, players, curBtr, isThisBatting, animate=false,
   const ordered = escalatorSort(players, curBtr, isThisBatting, side);
 
   // Build last-batter divider (scroll mode only, when batting)
-  const showDivider = !orderLock[side] && isThisBatting && lastBtr && lastBtr !== curBtr;
+  const showDivider = isThisBatting && lastBtr && lastBtr !== curBtr;
   const lastBtrPlayers = showDivider ? players.filter(p => matchBatter(lastBtr, [p]) >= 0) : [];
   const lastBtrCard = lastBtrPlayers.length ? (() => {
     const p = lastBtrPlayers[0];
