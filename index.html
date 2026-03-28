@@ -1479,6 +1479,7 @@ function parseGame(xmlText) {
           narrMain.includes(' stole ') ||
           /\bscored\b/.test(narrMain) ||
           narrLower.includes('picked off') ||
+          narrLower.includes('failed pickoff') ||
           narrLower.includes('no play') ||
           narrLower.includes('mound visit') ||
           narrLower.includes('offensive timeout') ||
@@ -2338,8 +2339,9 @@ function buildOfer(p) {
       const nonHrHits = (t>0?1:0) + (d>0?1:0) + (s>0?1:0);
       const firstNonHR = parts.findIndex(x => !x.includes('HR') && !x.includes('Grand Slam') &&
                                                !x.includes('Home Run'));
-      // Rule 6: single hit type → attach ("RBI Double"); multiple → separate ("3 RBI")
-      if (nonHrHits === 1 && hr === 0 && firstNonHR >= 0) {
+      // Rule 6: single hit type AND exactly 1 hit → attach ("RBI Double")
+      //         multiple hits → separate ("2 Singles, RBI") — never "RBI 2 Singles"
+      if (h === 1 && nonHrHits === 1 && hr === 0 && firstNonHR >= 0) {
         parts[firstNonHR] = (remainingRbi===1?'RBI':`${remainingRbi} RBI`) + ' ' + parts[firstNonHR];
       } else {
         parts.push(remainingRbi===1 ? 'RBI' : `${remainingRbi} RBI`);
