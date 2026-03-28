@@ -242,6 +242,46 @@
     font-family:'Futura Std','Barlow Condensed','Oswald',sans-serif;
   }
   .pcard.at-bat{ filter:drop-shadow(0 3px 14px rgba(0,0,0,0.9)); }
+  /* Pulsing outline when order is locked */
+  .order-locked .pcard.at-bat {
+    animation: pulseOutline 1.8s ease-in-out infinite;
+  }
+  @keyframes pulseOutline {
+    0%,100% { box-shadow: 0 0 0 0 rgba(var(--team-primary-rgb,245,166,35), 0.0), 0 0 0 2px rgba(var(--team-primary-rgb,245,166,35),0.7); }
+    50%      { box-shadow: 0 0 0 6px rgba(var(--team-primary-rgb,245,166,35), 0.0), 0 0 0 2px rgba(var(--team-primary-rgb,245,166,35),0.25); }
+  }
+  .t-panel.vis.order-locked .pcard.at-bat { --team-primary-rgb: var(--vis-primary-rgb, 245,166,35); }
+  .t-panel.hom.order-locked .pcard.at-bat { --team-primary-rgb: var(--hom-primary-rgb, 245,166,35); }
+  /* Last-batter separator */
+  .last-batter-divider {
+    display: flex; align-items: center; gap: 8px;
+    padding: 4px 10px; margin: 2px 0;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px; color: #444; letter-spacing: 1px;
+  }
+  .last-batter-divider::before, .last-batter-divider::after {
+    content: ''; flex: 1; height: 1px; background: #2a2a2a;
+  }
+  /* RHE bar on team header */
+  .t-hdr { display: flex; align-items: center; justify-content: space-between; padding: 4px 10px; }
+  .rhe-strip {
+    display: flex; gap: 10px; font-family: 'Share Tech Mono', monospace;
+    font-size: 11px; color: #666; letter-spacing: 1px;
+  }
+  .rhe-cell { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+  .rhe-val  { font-size: 15px; font-weight: 700; color: #ccc; line-height: 1; }
+  .rhe-val.rhe-r { color: #00c97a; }
+  .rhe-val.rhe-e { color: #ff8c00; }
+  .rhe-lbl  { font-size: 8px; color: #444; letter-spacing: 2px; }
+  /* Order lock toggle button */
+  .order-lock-btn {
+    background: none; border: 1px solid #2a2a2a; border-radius: 4px;
+    color: #555; font-family: 'Share Tech Mono', monospace;
+    font-size: 9px; letter-spacing: 1px; padding: 2px 6px; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .order-lock-btn:hover { border-color: #444; color: #888; }
+  .order-lock-btn.locked { border-color: #f5a623; color: #f5a623; }
 
   /* ── ROW 1: Header strip ─ "#52 FIRST NAME LAST NAME  3B | HEADER TEXT" ── */
   .pcard-hdr{
@@ -837,8 +877,18 @@
 <div class="main">
   <div class="t-panel vis" id="visPanel">
     <div class="t-hdr">
-      <span class="t-hdr-name" id="visHdr">AWAY</span>
-      <span class="t-hdr-sub" id="visRecord"></span>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="t-hdr-name" id="visHdr">AWAY</span>
+        <span class="t-hdr-sub" id="visRecord"></span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="rhe-strip" id="visRhe">
+          <div class="rhe-cell"><span class="rhe-val rhe-r" id="visRheR">-</span><span class="rhe-lbl">R</span></div>
+          <div class="rhe-cell"><span class="rhe-val" id="visRheH">-</span><span class="rhe-lbl">H</span></div>
+          <div class="rhe-cell"><span class="rhe-val rhe-e" id="visRheE">-</span><span class="rhe-lbl">E</span></div>
+        </div>
+        <button class="order-lock-btn" id="visOrderBtn" onclick="toggleOrderLock('vis')" title="Lock batting order position">⚡ SCROLL</button>
+      </div>
     </div>
     <div id="visRoster">
       <div class="empty">
@@ -857,8 +907,18 @@
   </div>
   <div class="t-panel hom" id="homPanel">
     <div class="t-hdr">
-      <span class="t-hdr-name" id="homHdr">HOME</span>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="t-hdr-name" id="homHdr">HOME</span>
       <span class="t-hdr-sub" id="homRecord"></span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="rhe-strip" id="homRhe">
+          <div class="rhe-cell"><span class="rhe-val rhe-r" id="homRheR">-</span><span class="rhe-lbl">R</span></div>
+          <div class="rhe-cell"><span class="rhe-val" id="homRheH">-</span><span class="rhe-lbl">H</span></div>
+          <div class="rhe-cell"><span class="rhe-val rhe-e" id="homRheE">-</span><span class="rhe-lbl">E</span></div>
+        </div>
+        <button class="order-lock-btn" id="homOrderBtn" onclick="toggleOrderLock('hom')" title="Lock batting order position">⚡ SCROLL</button>
+      </div>
     </div>
     <div id="homRoster">
       <div class="empty">
@@ -1284,6 +1344,23 @@ let fileHandle      = null;
 let fallbackFile    = null;
 let colorsLockedFor = null;
 let prevBatter      = '';   // previous batter for change detection
+let orderLock       = { vis: false, hom: false }; // false=scroll, true=locked in place
+let prevLastBatter  = { vis: '', hom: '' };        // track last batter per side
+
+function toggleOrderLock(side) {
+  orderLock[side] = !orderLock[side];
+  const btn   = document.getElementById(side + 'OrderBtn');
+  const panel = document.getElementById(side + 'Panel');
+  if (orderLock[side]) {
+    btn.textContent  = '🔒 LOCKED';
+    btn.classList.add('locked');
+    panel.classList.add('order-locked');
+  } else {
+    btn.textContent  = '⚡ SCROLL';
+    btn.classList.remove('locked');
+    panel.classList.remove('order-locked');
+  }
+}
 window._manualOverrides = window._manualOverrides || {};
 let prevInning      = '';   // previous inning number for change detection
 let prevTopBot      = '';   // previous half-inning side
@@ -1571,6 +1648,17 @@ function parseGame(xmlText) {
     setText('homRuns', homLS?.getAttribute('runs') ?? '0');
     setText('visHits', `${visLS?.getAttribute('hits') ?? 0} H · ${visLS?.getAttribute('errs') ?? 0} E`);
     setText('homHits', `${homLS?.getAttribute('hits') ?? 0} H · ${homLS?.getAttribute('errs') ?? 0} E`);
+    // RHE strips on team headers
+    const setRhe = (prefix, ls) => {
+      const r = ls?.getAttribute('runs') ?? '-';
+      const h = ls?.getAttribute('hits') ?? '-';
+      const e = ls?.getAttribute('errs') ?? '-';
+      setText(prefix + 'RheR', r);
+      setText(prefix + 'RheH', h);
+      setText(prefix + 'RheE', e);
+    };
+    setRhe('vis', visLS);
+    setRhe('hom', homLS);
 
     const innLabel = complete
       ? 'FINAL'
@@ -1626,10 +1714,16 @@ function parseGame(xmlText) {
         renderRoster('homRoster', 'hom', homPlayers, curBtr, topBot === 'H', true);
       }
     } else {
-      renderRoster('visRoster', 'vis', visPlayers, curBtr, topBot === 'V', false);
-      renderRoster('homRoster', 'hom', homPlayers, curBtr, topBot === 'H', false);
+      renderRoster('visRoster', 'vis', visPlayers, curBtr, topBot === 'V', false, prevLastBatter.vis);
+      renderRoster('homRoster', 'hom', homPlayers, curBtr, topBot === 'H', false, prevLastBatter.hom);
     }
 
+    // Track last batter per side for the divider display
+    if (curBtr && prevBatter && curBtr !== prevBatter) {
+      const prevSide = prevBatterSide || topBot;
+      if (prevSide === 'V') prevLastBatter.vis = prevBatter;
+      else                   prevLastBatter.hom = prevBatter;
+    }
     prevBatter     = curBtr;
     prevBatterSide = topBot;
 
@@ -2064,19 +2158,22 @@ function matchBatter(curBtr, players) {
 // followed by next batters in order wrapping around the lineup.
 // The non-batting team keeps normal order.
 // ════════════════════════════════════════════════════════════════════════════
-function escalatorSort(players, curBtr, isThisBatting) {
+function escalatorSort(players, curBtr, isThisBatting, side) {
   const lineup = players.filter(p => p.spot >= 1 && p.spot <= 9);
-  const bench  = []; // bench shown in accordion below
+  const bench  = [];
 
   if (!isThisBatting || !curBtr || lineup.length === 0) {
     return [...lineup, ...bench];
   }
 
+  // LOCKED mode: keep natural batting order 1-9, just mark current
+  if (side && orderLock[side]) {
+    return [...lineup, ...bench];
+  }
+
+  // SCROLL mode: rotate so current batter is at top
   const curIdx = matchBatter(curBtr, lineup);
-
   if (curIdx === -1) return [...lineup, ...bench];
-
-  // Rotate so current batter is index 0
   const rotated = [...lineup.slice(curIdx), ...lineup.slice(0, curIdx)];
   return [...rotated, ...bench];
 }
@@ -2084,14 +2181,40 @@ function escalatorSort(players, curBtr, isThisBatting) {
 // ════════════════════════════════════════════════════════════════════════════
 // RENDER
 // ════════════════════════════════════════════════════════════════════════════
-function renderRoster(elId, side, players, curBtr, isThisBatting, animate=false) {
+function renderRoster(elId, side, players, curBtr, isThisBatting, animate=false, lastBtr='') {
   const el = document.getElementById(elId);
   if (!players.length) {
     el.innerHTML = '<div class="empty"><div class="ico">—</div>NO DATA</div>';
     return;
   }
 
-  const ordered = escalatorSort(players, curBtr, isThisBatting);
+  const ordered = escalatorSort(players, curBtr, isThisBatting, side);
+
+  // Build last-batter divider (scroll mode only, when batting)
+  const showDivider = !orderLock[side] && isThisBatting && lastBtr && lastBtr !== curBtr;
+  const lastBtrPlayers = showDivider ? players.filter(p => matchBatter(lastBtr, [p]) >= 0) : [];
+  const lastBtrCard = lastBtrPlayers.length ? (() => {
+    const p = lastBtrPlayers[0];
+    const ofer = buildOfer(p);
+    const parenIdx = ofer.text.indexOf('(');
+    const scorePart = parenIdx > -1 ? ofer.text.substring(0, parenIdx).trim() : ofer.text;
+    const detailPart = parenIdx > -1 ? ofer.text.substring(parenIdx).toUpperCase() : '';
+    const ofHtml = ofer.cls === 'emp' ? '<span class="ofer-val emp">—</span>'
+      : '<span class="ofer-val ' + ofer.cls + '"><span class="ofer-score">' + gameLabel + ': ' + scorePart + '</span>'
+        + (detailPart ? ' <span class="ofer-detail">' + detailPart + '</span>' : '') + '</span>';
+    return '<div class="pcard" style="opacity:0.65;">'
+      + '<div class="pcard-hdr"><div class="pcard-hdr-left">'
+      + '<span class="p-uni">#' + p.uni + '</span>'
+      + '<span class="p-name">' + p.name + '</span>'
+      + '<span class="p-pos">' + (p.pos||'—') + '</span>'
+      + '</div><div class="pcard-hdr-right"><span class="queue-lbl" style="color:#555;">LAST AB</span></div></div>'
+      + '<div class="graphic-body"><div class="content-area"><div class="ofer-row">' + ofHtml + '</div></div></div>'
+      + '</div>';
+  })() : '';
+
+  const dividerHtml = showDivider && lastBtrCard
+    ? lastBtrCard + '<div class="last-batter-divider">NOW BATTING</div>'
+    : '';
 
   el.innerHTML = ordered.map((p, idx) => {
     const isCur = isThisBatting && matchBatter(curBtr, [p]) >= 0;
@@ -2222,7 +2345,7 @@ function renderRoster(elId, side, players, curBtr, isThisBatting, animate=false)
       '</div>'
     );
   }).join('');
-
+  el.innerHTML = dividerHtml + el.innerHTML;
   // Trigger staggered slide animation on cards if batter changed
   if (animate) {
     requestAnimationFrame(() => triggerEscalatorAnimation(side));
