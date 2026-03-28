@@ -2165,22 +2165,22 @@ function matchBatter(curBtr, players) {
 // ════════════════════════════════════════════════════════════════════════════
 function escalatorSort(players, curBtr, isThisBatting, side) {
   const lineup = players.filter(p => p.spot >= 1 && p.spot <= 9);
-  const bench  = [];
 
   if (!isThisBatting || !curBtr || lineup.length === 0) {
-    return [...lineup, ...bench];
+    return lineup;
   }
 
-  // LOCKED mode: keep natural batting order 1-9, just mark current
-  if (side && orderLock[side]) {
-    return [...lineup, ...bench];
-  }
-
-  // SCROLL mode: rotate so current batter is at top
   const curIdx = matchBatter(curBtr, lineup);
-  if (curIdx === -1) return [...lineup, ...bench];
-  const rotated = [...lineup.slice(curIdx), ...lineup.slice(0, curIdx)];
-  return [...rotated, ...bench];
+  if (curIdx === -1) return lineup;
+
+  if (side && orderLock[side]) {
+    // LOCKED: natural 1-9 order, current batter stays in place
+    return lineup;
+  }
+
+  // SCROLL: current batter first, then wrap around
+  // (last batter is shown separately above via dividerHtml)
+  return [...lineup.slice(curIdx), ...lineup.slice(0, curIdx)];
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -2195,7 +2195,7 @@ function renderRoster(elId, side, players, curBtr, isThisBatting, animate=false,
 
   const ordered = escalatorSort(players, curBtr, isThisBatting, side);
 
-  // Build last-batter divider (scroll mode only, when batting)
+  // Always show: [last batter dimmed] → [NOW BATTING divider] → [current batter pulsing] → [rest]
   const showDivider = isThisBatting && lastBtr && lastBtr !== curBtr;
   const lastBtrPlayers = showDivider ? players.filter(p => matchBatter(lastBtr, [p]) >= 0) : [];
   const lastBtrCard = lastBtrPlayers.length ? (() => {
@@ -2221,7 +2221,18 @@ function renderRoster(elId, side, players, curBtr, isThisBatting, animate=false,
     ? lastBtrCard + '<div class="last-batter-divider">NOW BATTING</div>'
     : '';
 
-  el.innerHTML = ordered.map((p, idx) => {
+  // In locked mode, pull current batter to front of render so it appears
+  // immediately below the divider. Rest of order follows.
+  let renderOrder = [...ordered];
+  if (isThisBatting && curBtr && side && orderLock[side]) {
+    const curI = renderOrder.findIndex(p => matchBatter(curBtr, [p]) >= 0);
+    if (curI > 0) {
+      const cur = renderOrder.splice(curI, 1)[0];
+      renderOrder.unshift(cur);
+    }
+  }
+
+  el.innerHTML = renderOrder.map((p, idx) => {
     const isCur = isThisBatting && matchBatter(curBtr, [p]) >= 0;
 
     let qLabel = '';
