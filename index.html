@@ -2160,6 +2160,12 @@ function matchBatter(curBtr, players) {
   const curParts = norm(curBtr);
   if (!curParts.length) return -1;
 
+  // The disambiguating parts of curBtr — everything after the last name
+  // e.g. "Morris, Mi" → lastName="morris", initials=["mi"]
+  // If initials are present, a player whose first-name token CONFLICTS must be penalised
+  const curLastName = curParts[0] || '';
+  const curInitials = curParts.slice(1); // e.g. ["mi"] or []
+
   let bestIdx   = -1;
   let bestScore = 0;
 
@@ -2168,7 +2174,6 @@ function matchBatter(curBtr, players) {
     const shortParts = norm(p.short || '');
     const allParts   = [...new Set([...nameParts, ...shortParts])];
 
-    // Last name = first token of shortname (StatCrew always "Last,First")
     const lastName = shortParts[0] || nameParts[0] || '';
     let score = 0;
 
@@ -2179,11 +2184,22 @@ function matchBatter(curBtr, players) {
       else if (allParts.some(a => a.includes(cp) || cp.includes(a)))     score += 1;
     }
 
+    // Conflict penalty: if curBtr has initials AND the player's first-name token
+    // starts with a DIFFERENT initial, deduct heavily — prevents "Morris, Mi"
+    // from matching "Morris, Av" via last-name alone
+    if (score >= 10 && curInitials.length > 0 && lastName === curLastName) {
+      const playerInitials = allParts.slice(1); // everything after last name
+      const hasConflict = curInitials.some(ci =>
+        playerInitials.length > 0 &&
+        playerInitials.every(pi => !pi.startsWith(ci) && !ci.startsWith(pi))
+      );
+      if (hasConflict) score = 2; // demote — only matches if nothing else does
+    }
+
     if (score > bestScore) { bestScore = score; bestIdx = idx; }
   });
 
   // Require last-name-level match (score >= 5) to avoid false positives
-  // But also try a direct string fallback in case norm() stripped something important
   if (bestScore < 5) {
     const rawCur = (curBtr || '').toLowerCase().replace(/\s+/g,' ').trim();
     players.forEach((p, idx) => {
