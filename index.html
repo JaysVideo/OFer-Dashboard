@@ -16,7 +16,9 @@
     --live:#ff3b3b; --green:#00c97a; --espn-red:#d00000;
     /* team colors — set dynamically per side */
     --vis-primary:#888; --vis-dark:#333; --vis-light:#aaa;
+    --vis-score-bg:#1a1e28; --vis-on-primary:#ffffff;
     --hom-primary:#888; --hom-dark:#333; --hom-light:#aaa;
+    --hom-score-bg:#1a1e28; --hom-on-primary:#ffffff;
   }
   *{box-sizing:border-box;margin:0;padding:0;}
   body{background:var(--bg);color:var(--text);font-family:'Roboto Condensed',sans-serif;min-height:100vh;overflow-x:hidden;}
@@ -141,11 +143,12 @@
     flex:1;display:flex;align-items:center;gap:18px;padding:14px 28px;
     position:relative;overflow:hidden;
   }
-  .score-side.vis{background:linear-gradient(135deg, color-mix(in srgb, var(--vis-dark) 90%, transparent) 0%, var(--surface3) 100%);}
-  .score-side.hom{background:linear-gradient(135deg, var(--surface3) 0%, color-mix(in srgb, var(--hom-dark) 90%, transparent) 100%);flex-direction:row-reverse;}
+  /* Score bar: team color IS the background — text flips to white or black for contrast */
+  .score-side.vis{background:var(--vis-score-bg, var(--vis-dark, #1a1e28));}
+  .score-side.hom{background:var(--hom-score-bg, var(--hom-dark, #1a1e28));flex-direction:row-reverse;}
   .score-side::before{
     content:'';position:absolute;inset:0;
-    background:linear-gradient(135deg,rgba(255,255,255,0.03),transparent);
+    background:linear-gradient(135deg,rgba(255,255,255,0.07),transparent 60%);
     pointer-events:none;
   }
   .inning-summary.show{
@@ -155,20 +158,24 @@
   /* Team logo in score bar */
   .s-logo{
     width:52px;height:52px;object-fit:contain;flex-shrink:0;
-    filter:drop-shadow(0 1px 4px rgba(0,0,0,0.6));
     transition:opacity 0.3s;
   }
+  /* On dark backgrounds: brighten logo. On light backgrounds: darken shadow */
+  .score-side.vis .s-logo{ filter:drop-shadow(0 1px 6px rgba(0,0,0,0.5)); }
+  .score-side.hom .s-logo{ filter:drop-shadow(0 1px 6px rgba(0,0,0,0.5)); }
   @media (max-width:768px){ .s-logo{width:32px;height:32px;} }
 
   .s-team-info{display:flex;flex-direction:column;gap:2px;}
   .s-school{font-family:'Futura Std','Oswald',sans-serif;font-size:28px;font-weight:800;letter-spacing:2px;text-transform:uppercase;line-height:1;}
-  .s-record{font-family:'Share Tech Mono',monospace;font-size:14px;color:var(--muted);letter-spacing:1px;margin-top:3px;}
+  .s-record{font-family:'Share Tech Mono',monospace;font-size:14px;letter-spacing:1px;margin-top:3px;opacity:0.75;}
   .s-score-num{font-family:'Futura Std','Oswald',sans-serif;font-size:72px;font-weight:900;line-height:1;min-width:70px;text-align:center;}
-  .score-side.vis .s-school{color:var(--vis-primary);}
-  .score-side.vis .s-score-num{color:var(--vis-primary);}
-  .score-side.hom .s-school{color:var(--hom-primary);text-align:right;}
-  .score-side.hom .s-score-num{color:var(--hom-primary);}
-  .score-side.hom .s-record{text-align:right;}
+  /* Text on colored backgrounds uses on-primary (white or black) for guaranteed contrast */
+  .score-side.vis .s-school{color:var(--vis-on-primary, #fff);}
+  .score-side.vis .s-score-num{color:var(--vis-on-primary, #fff);}
+  .score-side.vis .s-record{color:var(--vis-on-primary, #fff);}
+  .score-side.hom .s-school{color:var(--hom-on-primary, #fff);text-align:right;}
+  .score-side.hom .s-score-num{color:var(--hom-on-primary, #fff);}
+  .score-side.hom .s-record{text-align:right;color:var(--hom-on-primary, #fff);}
 
   .score-mid{
     display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -1298,28 +1305,48 @@ function getTeamColors(id, name) {
 
 function applySideColors(side, colors) {
   const root = document.documentElement;
-  root.style.setProperty(`--${side}-primary`, colors.primary);
-  root.style.setProperty(`--${side}-dark`,    colors.dark);
-  // Convert hex to RGB triplet for CSS custom property (used in pulse animation)
-  const _hex = colors.primary.replace('#','');
-  const _r = parseInt(_hex.substring(0,2),16), _g = parseInt(_hex.substring(2,4),16), _b = parseInt(_hex.substring(4,6),16);
-  if (!isNaN(_r)) root.style.setProperty(`--${side}-primary-rgb`, `${_r},${_g},${_b}`);
-  // Sync color picker swatch to match
+  const hex = colors.primary.replace('#','');
+  const r = parseInt(hex.substring(0,2),16) || 0;
+  const g = parseInt(hex.substring(2,4),16) || 0;
+  const b = parseInt(hex.substring(4,6),16) || 0;
+
+  // Relative luminance (WCAG formula)
+  const lum = 0.299*r + 0.587*g + 0.114*b;
+
+  // onPrimary: text color to use ON TOP of the primary color — white for dark, black for light
+  const onPrimary = lum > 155 ? '#000000' : '#ffffff';
+
+  // scoreBg: the score bar background — USE the primary color directly (high contrast)
+  // For very dark colors (navy, black), lighten slightly so it's not invisible against the page
+  let scoreBg = colors.primary;
+  if (lum < 30) {
+    // Very dark — boost to a usable dark shade rather than pure black
+    const boost = Math.round(Math.max(r,g,b) * 1.8 + 40);
+    const br = Math.min(255, r + boost).toString(16).padStart(2,'0');
+    const bg = Math.min(255, g + boost).toString(16).padStart(2,'0');
+    const bb2 = Math.min(255, b + boost).toString(16).padStart(2,'0');
+    scoreBg = '#' + br + bg + bb2;
+  }
+
+  // dark variant: heavily darkened for background tints (panels, gradients)
+  const dr = Math.round(r * 0.25).toString(16).padStart(2,'0');
+  const dg = Math.round(g * 0.25).toString(16).padStart(2,'0');
+  const db2 = Math.round(b * 0.25).toString(16).padStart(2,'0');
+  const dark = colors.dark || ('#' + dr + dg + db2);
+
+  root.style.setProperty(`--${side}-primary`,    colors.primary);
+  root.style.setProperty(`--${side}-dark`,        dark);
+  root.style.setProperty(`--${side}-score-bg`,    scoreBg);
+  root.style.setProperty(`--${side}-on-primary`,  onPrimary);
+  root.style.setProperty(`--${side}-primary-rgb`, `${r},${g},${b}`);
+
   const picker = document.getElementById(side + 'ColorPicker');
   if (picker) picker.value = colors.primary;
 }
 
 function onColorPick(side, hex) {
   colorsLockedFor = colorsLockedFor || 'manual'; // prevent refresh from overwriting
-  // Derive a dark version: darken by ~60%
-  const r = parseInt(hex.slice(1,3),16);
-  const g = parseInt(hex.slice(3,5),16);
-  const b = parseInt(hex.slice(5,7),16);
-  const dr = Math.round(r * 0.35).toString(16).padStart(2,'0');
-  const dg = Math.round(g * 0.35).toString(16).padStart(2,'0');
-  const db = Math.round(b * 0.35).toString(16).padStart(2,'0');
-  const dark = '#' + dr + dg + db;
-  applySideColors(side, { primary: hex, dark });
+  applySideColors(side, { primary: hex, dark: null });
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -1470,14 +1497,10 @@ async function resolveTeamColorAuto(side, xmlName, id) {
   const espn = await resolveEspnTeam(xmlName);
   if (espn?.color) {
     const hex = espn.color;
-    // Reject near-black, near-white — ESPN sometimes returns 000000/ffffff as placeholders
     const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
     const lum = 0.299*r + 0.587*g + 0.114*b;
-    if (lum > 15 && lum < 245) {
-      const dr = Math.round(r*0.35).toString(16).padStart(2,'0');
-      const dg = Math.round(g*0.35).toString(16).padStart(2,'0');
-      const db = Math.round(b*0.35).toString(16).padStart(2,'0');
-      applySideColors(side, { primary: hex, dark: '#'+dr+dg+db });
+    if (lum > 8 && lum < 248) {
+      applySideColors(side, { primary: hex, dark: null });
       return;
     }
   }
@@ -1486,16 +1509,11 @@ async function resolveTeamColorAuto(side, xmlName, id) {
   if (catalogName) {
     const hex = await fetchTeamColor(catalogName);
     if (hex) {
-      const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
-      const dr = Math.round(r*0.35).toString(16).padStart(2,'0');
-      const dg = Math.round(g*0.35).toString(16).padStart(2,'0');
-      const db = Math.round(b*0.35).toString(16).padStart(2,'0');
-      applySideColors(side, { primary: hex, dark: '#'+dr+dg+db });
+      applySideColors(side, { primary: hex, dark: null });
       return;
     }
   }
   // ── Path 3: TEAM_COLORS table (already applied before this runs) ───────
-  // Nothing to do — the table lookup already ran in parseGame
 }
 
 // ════════════════════════════════════════════════════════════════════════════
