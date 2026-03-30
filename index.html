@@ -43,7 +43,7 @@
   /* ── Slide-out menu ───────────────────────────────────────────────────── */
   .side-menu{
     position:fixed;top:0;left:-300px;width:280px;height:100vh;
-    background:#0d0f14;border-right:1px solid var(--border);
+    background:#13161e;border-right:1px solid var(--border);
     z-index:1000;transition:left 0.25s ease;
     display:flex;flex-direction:column;
     box-shadow:4px 0 24px rgba(0,0,0,0.7);
@@ -56,35 +56,41 @@
   .side-menu-header{
     display:flex;align-items:center;justify-content:space-between;
     padding:14px 16px;border-bottom:1px solid var(--border);
-    background:#090b0e;
+    background:#0d0f14;
   }
   .side-menu-title{
     font-family:'Futura Std','Oswald',sans-serif;font-size:13px;
-    font-weight:700;letter-spacing:3px;color:#ccc;text-transform:uppercase;
+    font-weight:700;letter-spacing:3px;color:#ffffff;text-transform:uppercase;
   }
   .side-menu-close{
-    background:none;border:none;color:#666;cursor:pointer;
+    background:none;border:none;color:#aaa;cursor:pointer;
     font-size:20px;line-height:1;padding:2px 6px;
   }
   .side-menu-close:hover{color:#fff;}
-  .side-menu-body{padding:16px;display:flex;flex-direction:column;gap:8px;flex:1;}
+  .side-menu-body{padding:16px;display:flex;flex-direction:column;gap:8px;flex:1;overflow-y:auto;}
   .menu-section-label{
     font-family:'Share Tech Mono',monospace;font-size:9px;
-    color:var(--muted);letter-spacing:2px;text-transform:uppercase;
-    padding-bottom:6px;border-bottom:1px solid var(--border);margin-bottom:4px;
+    color:#aaa;letter-spacing:2px;text-transform:uppercase;
+    padding-bottom:6px;border-bottom:1px solid #333;margin-bottom:4px;
   }
   .menu-btn{
     display:flex;align-items:center;gap:10px;
-    background:var(--surface2);border:1px solid var(--border);
-    color:var(--text);font-family:'Futura Std','Oswald',sans-serif;
+    background:#1e2230;border:1px solid #333;
+    color:#e8eaf0;font-family:'Futura Std','Oswald',sans-serif;
     font-size:13px;font-weight:600;letter-spacing:1px;text-transform:uppercase;
     padding:10px 14px;cursor:pointer;transition:all 0.15s;width:100%;text-align:left;
   }
-  .menu-btn:hover{background:var(--surface);border-color:#555;color:#fff;}
+  .menu-btn:hover{background:#252a38;border-color:#666;color:#fff;}
   .menu-btn .menu-icon{font-size:16px;flex-shrink:0;}
-  .menu-btn.red{border-color:var(--espn-red);color:var(--espn-red);}
+  .menu-btn.red{border-color:var(--espn-red);color:#ff6b6b;}
   .menu-btn.red:hover{background:var(--espn-red);color:#fff;}
-  .menu-divider{height:1px;background:var(--border);margin:8px 0;}
+  .menu-divider{height:1px;background:#2a2a3a;margin:6px 0;}
+  /* Shared readable text styles used in the menu via inline style — override via class */
+  .menu-body-txt{font-family:'Share Tech Mono',monospace;font-size:10px;color:#ccc;letter-spacing:1px;}
+  .menu-label-txt{font-family:'Share Tech Mono',monospace;font-size:10px;color:#bbb;letter-spacing:1px;}
+  .menu-instruction-txt{font-family:'Share Tech Mono',monospace;font-size:10px;color:#bbb;line-height:2;padding:4px 0;}
+  .menu-instruction-txt div{color:#ccc;}
+  .menu-shortcut-key{color:#f5a623;min-width:28px;display:inline-block;font-weight:700;}
   .menu-file-input{display:none;}
   .espn-badge{
     background:var(--espn-red);color:#fff;
@@ -100,7 +106,7 @@
   @keyframes blink{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.25;transform:scale(0.5)}}
 
   .hdr-r{display:flex;align-items:center;gap:10px;}
-  .timer-txt{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:1px;}
+  .timer-txt{font-family:'Share Tech Mono',monospace;font-size:11px;color:#bbb;letter-spacing:1px;}
   .timer-txt b{color:#f5a623;}
   .btn{background:var(--espn-red);color:#fff;border:none;font-family:'Oswald',sans-serif;font-size:12px;font-weight:600;letter-spacing:1px;padding:6px 16px;cursor:pointer;text-transform:uppercase;transition:background 0.15s;}
   .btn:hover{background:#ff2020;}
@@ -778,41 +784,41 @@
     <div class="menu-divider"></div>
     <div class="menu-section-label">Colors</div>
     <div style="display:flex;align-items:center;gap:10px;padding:4px 0;">
-      <span class="color-picker-label" style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;flex:1;">AWAY</span>
-      <span class="team-name-badge" id="visColorLabel" style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#888;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">—</span>
+      <span class="menu-label-txt" style="flex:1;">AWAY</span>
+      <span class="team-name-badge" id="visColorLabel" style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#ccc;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">—</span>
       <input type="color" class="team-color-swatch" id="visColorPicker" value="#13B5EA" oninput="onColorPick('vis', this.value)">
     </div>
     <div style="display:flex;align-items:center;gap:10px;padding:4px 0;">
-      <span class="color-picker-label" style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;flex:1;">HOME</span>
-      <span class="team-name-badge" id="homColorLabel" style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#888;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">—</span>
+      <span class="menu-label-txt" style="flex:1;">HOME</span>
+      <span class="team-name-badge" id="homColorLabel" style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#ccc;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">—</span>
       <input type="color" class="team-color-swatch" id="homColorPicker" value="#6CADDE" oninput="onColorPick('hom', this.value)">
     </div>
     <div class="menu-divider"></div>
     <div class="menu-section-label">Display</div>
     <div style="display:flex;align-items:center;gap:10px;padding:4px 0;">
-      <span style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;flex:1;">FONT SIZE</span>
+      <span class="menu-label-txt" style="flex:1;">FONT SIZE</span>
       <input type="range" id="fontSizeSlider" min="80" max="130" value="100"
         oninput="applyFontSize(this.value)"
         style="flex:2;accent-color:var(--espn-red);cursor:pointer;">
-      <span id="fontSizeLabel" style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#888;width:32px;text-align:right;">100%</span>
+      <span id="fontSizeLabel" class="menu-label-txt" style="width:32px;text-align:right;">100%</span>
     </div>
     <div style="display:flex;align-items:center;gap:10px;padding:4px 0;">
-      <span style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;flex:1;">THEME</span>
+      <span class="menu-label-txt" style="flex:1;">THEME</span>
       <button onclick="toggleTheme()" id="themeBtn" class="menu-btn" style="flex:2;padding:6px 10px;font-size:11px;">
         🌙 DARK MODE
       </button>
     </div>
     <div class="menu-divider"></div>
     <div class="menu-section-label">Keyboard Shortcuts</div>
-    <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#666;line-height:2;padding:4px 0;">
-      <div><span style="color:#f5a623;min-width:28px;display:inline-block;">1-9</span> Copy that batting spot</div>
-      <div><span style="color:#f5a623;min-width:28px;display:inline-block;">C</span> Copy all stat lines</div>
-      <div><span style="color:#f5a623;min-width:28px;display:inline-block;">M</span> Manual override on batter</div>
-      <div><span style="color:#f5a623;min-width:28px;display:inline-block;">DBL</span> Double-click name = note</div>
+    <div class="menu-instruction-txt">
+      <div><span class="menu-shortcut-key">1-9</span> Copy that batting spot</div>
+      <div><span class="menu-shortcut-key">C</span> Copy all stat lines</div>
+      <div><span class="menu-shortcut-key">M</span> Manual override on batter</div>
+      <div><span class="menu-shortcut-key">DBL</span> Double-click name = note</div>
     </div>
     <div class="menu-divider"></div>
     <div class="menu-section-label">Instructions</div>
-    <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#555;line-height:1.9;padding:4px 0;">
+    <div class="menu-instruction-txt">
       <div>1. SELECT XML FILE to begin</div>
       <div>2. SAVE OUTPUT FILE to write</div>
       <div>&nbsp;&nbsp;&nbsp;Xpression Datalinq XML</div>
@@ -825,10 +831,10 @@
     <div class="menu-section-label">Status</div>
     <div style="display:flex;align-items:center;gap:8px;padding:4px 0;">
       <span class="sdot" id="sdot"></span>
-      <span id="statusTxt" style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;">SELECT XML FILE TO BEGIN</span>
+      <span id="statusTxt" class="menu-body-txt">SELECT XML FILE TO BEGIN</span>
     </div>
-    <span class="timer-txt" id="timerTxt" style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--muted);"></span>
-    <span class="file-name" id="fileName" style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#444;margin-top:4px;word-break:break-all;">No file selected</span>
+    <span class="timer-txt" id="timerTxt" class="menu-body-txt"></span>
+    <span id="fileName" style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#999;margin-top:4px;word-break:break-all;">No file selected</span>
   </div>
 </div>
 
@@ -840,7 +846,7 @@
     <div class="espn-badge">ESPN</div>
     <div style="display:flex;flex-direction:column;gap:1px;">
       <div class="hdr-title">0-FER Dashboard</div>
-      <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#555;letter-spacing:2px;">ESPN-0Fers V5</div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#888;letter-spacing:2px;">ESPN-0Fers V5</div>
     </div>
     <div class="live-pill" id="livePill"><span class="live-dot"></span>LIVE</div>
   </div>
