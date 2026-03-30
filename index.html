@@ -1407,9 +1407,20 @@ async function getEspnTeamMap() {
       ESPN_ENDPOINTS.map(url => fetch(url).then(r => r.ok ? r.json() : Promise.reject(r.status)))
     );
     // basketball first (lowest priority), baseball/softball override
-    for (const result of [results[2], results[0], results[1]]) {
-      if (result.status !== 'fulfilled') continue;
-      const teams = result.value?.sports?.[0]?.leagues?.[0]?.teams || result.value?.teams || [];
+    for (let ri = 0; ri < 3; ri++) {
+      const result = [results[2], results[0], results[1]][ri];
+      if (result.status !== 'fulfilled') {
+        console.warn('[ESPN logo] endpoint', ri, 'failed:', result.reason);
+        continue;
+      }
+      const data = result.value;
+      // Try all known response shapes
+      const teams =
+        data?.sports?.[0]?.leagues?.[0]?.teams ||
+        data?.leagues?.[0]?.teams ||
+        data?.teams ||
+        [];
+      console.log('[ESPN logo] endpoint', ri, '→', teams.length, 'teams, first:', teams[0]?.team?.displayName || teams[0]?.displayName || JSON.stringify(Object.keys(data)).slice(0,80));
       for (const entry of teams) {
         const t = entry.team || entry;
         if (!t.id) continue;
@@ -1422,6 +1433,7 @@ async function getEspnTeamMap() {
       }
     }
     espnTeamMap = map;
+    console.log('[ESPN logo] map built:', Object.keys(map).length, 'entries');
     return map;
   })();
   return espnFetchPromise;
@@ -1429,32 +1441,36 @@ async function getEspnTeamMap() {
 
 async function resolveEspnTeam(xmlName) {
   const map = await getEspnTeamMap();
-  if (!map || !Object.keys(map).length) return null;
+  if (!map || !Object.keys(map).length) { console.warn('[ESPN logo] map empty, cannot resolve:', xmlName); return null; }
   const q = xmlName.toUpperCase().trim();
-  if (map[q]) return map[q];
+  if (map[q]) { console.log('[ESPN logo] exact match:', q, '→ id', map[q].id); return map[q]; }
   for (const [key, rec] of Object.entries(map)) {
-    if (key.startsWith(q + ' ') || q.startsWith(key + ' ')) return rec;
+    if (key.startsWith(q + ' ') || q.startsWith(key + ' ')) { console.log('[ESPN logo] prefix match:', q, '→', key, 'id', rec.id); return rec; }
   }
   const qNorm = normalizeForMatch(xmlName);
   const qWords = qNorm.split(' ').filter(Boolean);
-  let best = null, bestScore = 0;
+  let best = null, bestScore = 0, bestKey = '';
   for (const [key, rec] of Object.entries(map)) {
     const kWords = normalizeForMatch(key).split(' ').filter(Boolean);
     const score = qWords.filter(w => kWords.includes(w)).length / Math.max(qWords.length, kWords.length);
-    if (score > bestScore) { bestScore = score; best = rec; }
+    if (score > bestScore) { bestScore = score; best = rec; bestKey = key; }
   }
-  return bestScore >= 0.5 ? best : null;
+  if (bestScore >= 0.5) { console.log('[ESPN logo] fuzzy match:', q, '→', bestKey, 'score', bestScore.toFixed(2), 'id', best.id); return best; }
+  console.warn('[ESPN logo] no match for:', q, '(best was', bestKey, 'at', bestScore.toFixed(2), ')');
+  return null;
 }
 
 // Resolve logo — sets <img id="logoVis|logoHom"> src
 async function resolveTeamLogo(side, xmlName) {
   const el = document.getElementById(side === 'vis' ? 'logoVis' : 'logoHom');
-  if (!el) return;
+  if (!el) { console.warn('[ESPN logo] img element not found for side:', side); return; }
   const espn = await resolveEspnTeam(xmlName);
   if (!espn?.id) { el.style.display = 'none'; return; }
-  el.onload  = () => { el.style.display = ''; };
-  el.onerror = () => { el.style.display = 'none'; };
-  el.src = `${ESPN_LOGO_BASE}${espn.id}.png`;
+  const url = `${ESPN_LOGO_BASE}${espn.id}.png`;
+  console.log('[ESPN logo] setting src:', url);
+  el.onload  = () => { console.log('[ESPN logo] loaded OK:', url); el.style.display = ''; };
+  el.onerror = () => { console.warn('[ESPN logo] img load failed:', url); el.style.display = 'none'; };
+  el.src = url;
   el.alt = xmlName;
 }
 
