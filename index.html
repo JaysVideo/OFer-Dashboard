@@ -1389,13 +1389,8 @@ function extractColorFromBlob(blob) {
   });
 }
 
-// ESPN API: queries baseball + softball + basketball endpoints in parallel
-const ESPN_LOGO_BASE = 'https://a.espncdn.com/i/teamlogos/ncaa/500/';
-const ESPN_ENDPOINTS = [
-  'https://site.api.espn.com/apis/site/v2/sports/baseball/college-baseball/teams?limit=900',
-  'https://site.api.espn.com/apis/site/v2/sports/baseball/college-softball/teams?limit=900',
-  'https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/teams?limit=1000',
-];
+// ESPN API: basketball is most complete for college logos; logo URL comes directly from the response
+const ESPN_BBALL_URL = 'https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/teams?limit=1000';
 let espnTeamMap = null, espnFetchPromise = null;
 
 async function getEspnTeamMap() {
@@ -1403,34 +1398,29 @@ async function getEspnTeamMap() {
   if (espnFetchPromise) return espnFetchPromise;
   espnFetchPromise = (async () => {
     const map = {};
-    const results = await Promise.allSettled(
-      ESPN_ENDPOINTS.map(url => fetch(url).then(r => r.ok ? r.json() : Promise.reject(r.status)))
-    );
-    // basketball first (lowest priority), baseball/softball override
-    for (let ri = 0; ri < 3; ri++) {
-      const result = [results[2], results[0], results[1]][ri];
-      if (result.status !== 'fulfilled') {
-        console.warn('[ESPN logo] endpoint', ri, 'failed:', result.reason);
-        continue;
-      }
-      const data = result.value;
-      // Try all known response shapes
+    try {
+      const resp = await fetch(ESPN_BBALL_URL);
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const data = await resp.json();
       const teams =
         data?.sports?.[0]?.leagues?.[0]?.teams ||
         data?.leagues?.[0]?.teams ||
-        data?.teams ||
-        [];
-      console.log('[ESPN logo] endpoint', ri, '→', teams.length, 'teams, first:', teams[0]?.team?.displayName || teams[0]?.displayName || JSON.stringify(Object.keys(data)).slice(0,80));
+        data?.teams || [];
+      console.log('[ESPN logo] fetched', teams.length, 'teams');
       for (const entry of teams) {
         const t = entry.team || entry;
         if (!t.id) continue;
+        // Grab logo URL directly from the response — avoids CDN path guessing
+        const logoUrl = t.logos?.[0]?.href || null;
         const color    = t.color         ? '#' + t.color.replace(/^#/,'')         : null;
         const altColor = t.alternateColor ? '#' + t.alternateColor.replace(/^#/,'') : null;
-        const rec = { id: t.id, color, altColor };
+        const rec = { id: t.id, logoUrl, color, altColor };
         for (const key of [t.displayName, t.shortDisplayName, t.abbreviation, t.nickname, t.location, t.name]) {
           if (key) map[key.toUpperCase().trim()] = rec;
         }
       }
+    } catch(e) {
+      console.warn('[ESPN logo] fetch failed:', e.message);
     }
     espnTeamMap = map;
     console.log('[ESPN logo] map built:', Object.keys(map).length, 'entries');
@@ -1460,17 +1450,16 @@ async function resolveEspnTeam(xmlName) {
   return null;
 }
 
-// Resolve logo — sets <img id="logoVis|logoHom"> src
+// Resolve logo — uses URL directly from ESPN API response
 async function resolveTeamLogo(side, xmlName) {
   const el = document.getElementById(side === 'vis' ? 'logoVis' : 'logoHom');
-  if (!el) { console.warn('[ESPN logo] img element not found for side:', side); return; }
+  if (!el) return;
   const espn = await resolveEspnTeam(xmlName);
-  if (!espn?.id) { el.style.display = 'none'; return; }
-  const url = `${ESPN_LOGO_BASE}${espn.id}.png`;
-  console.log('[ESPN logo] setting src:', url);
-  el.onload  = () => { console.log('[ESPN logo] loaded OK:', url); el.style.display = ''; };
-  el.onerror = () => { console.warn('[ESPN logo] img load failed:', url); el.style.display = 'none'; };
-  el.src = url;
+  if (!espn?.logoUrl) { console.warn('[ESPN logo] no logoUrl for:', xmlName); el.style.display = 'none'; return; }
+  console.log('[ESPN logo] setting src:', espn.logoUrl);
+  el.onload  = () => { console.log('[ESPN logo] loaded OK:', espn.logoUrl); el.style.display = ''; };
+  el.onerror = () => { console.warn('[ESPN logo] img failed:', espn.logoUrl); el.style.display = 'none'; };
+  el.src = espn.logoUrl;
   el.alt = xmlName;
 }
 
