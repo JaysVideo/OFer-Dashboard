@@ -152,6 +152,14 @@
     pointer-events:all;
   }
 
+  /* Team logo in score bar */
+  .s-logo{
+    width:52px;height:52px;object-fit:contain;flex-shrink:0;
+    filter:drop-shadow(0 1px 4px rgba(0,0,0,0.6));
+    transition:opacity 0.3s;
+  }
+  @media (max-width:768px){ .s-logo{width:32px;height:32px;} }
+
   .s-team-info{display:flex;flex-direction:column;gap:2px;}
   .s-school{font-family:'Futura Std','Oswald',sans-serif;font-size:28px;font-weight:800;letter-spacing:2px;text-transform:uppercase;line-height:1;}
   .s-record{font-family:'Share Tech Mono',monospace;font-size:14px;color:var(--muted);letter-spacing:1px;margin-top:3px;}
@@ -846,6 +854,7 @@
   <div class="score-inner">
     <div class="score-side vis">
       <div class="s-score-num" id="visRuns">0</div>
+      <img class="s-logo" id="logoVis" src="" alt="" style="display:none">
       <div class="s-team-info">
         <div class="s-school" id="visSchool">AWAY</div>
         <div class="s-record" id="visHits"></div>
@@ -867,6 +876,7 @@
     </div>
     <div class="score-side hom">
       <div class="s-score-num" id="homRuns">0</div>
+      <img class="s-logo" id="logoHom" src="" alt="" style="display:none">
       <div class="s-team-info">
         <div class="s-school" id="homSchool">HOME</div>
         <div class="s-record" id="homHits"></div>
@@ -1313,6 +1323,177 @@ function onColorPick(side, hex) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
+// ESPN + TEAMCOLORS — AUTO COLOR & LOGO RESOLUTION
+// Priority: 1) ESPN API color  2) JaysVideo/teamcolors pixel  3) TEAM_COLORS table
+// Logo CDN:  https://a.espncdn.com/i/teamlogos/ncaa/500/{id}.png
+// ════════════════════════════════════════════════════════════════════════════
+const COLOR_BASE = 'https://raw.githubusercontent.com/JaysVideo/teamcolors/main/Colors/';
+const TEAM_CATALOG = ["BYU","GONZAGA","LOYOLA MARYMOUNT","PACIFIC","PEPPERDINE","PORTLAND","SAINT MARYS","SAN DIEGO","SAN FRANCISCO","SANTA CLARA","APPALACHIAN STATE","ARKANSAS LITTLE ROCK","ARKANSAS STATE","COASTAL CAROLINA","GEORGIA SOUTHERN","GEORGIA STATE","HAMPTON","LOUISIANA MONROE","LOUISIANA","SOUTH ALABAMA","TEXAS ARLINGTON","TEXAS STATE","TROY","AIR FORCE FALCONS","BOISE STATE BRONCOS","COLORADO STATE RAMS","FRESNO STATE BULLDOGS","HAWAII RAINBOW WARRIORS","NEVADA WOLF PACK","NEW MEXICO LOBOS","SAN DIEGO STATE AZTECS","SAN JOSE STATE SPARTANS","UNLV REBELS","UTAH STATE AGGIES","WYOMING COWBOYS","BRYANT BULLDOGS","CENTRAL CONNECTICUT BLUE DEVILS","FAIRLEIGH DICKINSON KNIGHTS","LONG ISLAND SHARKS","MERRIMACK WARRIORS","MOUNT ST MARYS MOUNTAINEERS","ROBERT MORRIS COLONIALS","SACRED HEART PIONEERS","ST FRANCIS BROOKLYN TERRIERS","ST FRANCIS PA RED FLASH","WAGNER SEAHAWKS","DENVER PIONEERS","NDSU BISON","NORTH DAKOTA FIGHTING HAWKS","OMAHA MAVERICKS","ORAL ROBERTS GOLDEN EAGLES","PURDUE FORT WAYNE MASTODONS","SOUTH DAKOTA COYOTES","SOUTH DAKOTA STATE JACKRABBITS","WESTERN ILLINOIS LEATHERNECKS","EASTERN WASHINGTON EAGLES","IDAHO STATE BENGALS","IDAHO VANDALS","MONTANA GRIZZLIES","MONTANA STATE BOBCATS","NORTHERN ARIZONA LUMBERJACKS","NORTHERN COLORADO BEARS","PORTLAND STATE VIKINGS","SACRAMENTO STATE HORNETS","SOUTHERN UTAH THUNDERBIRDS","WEBER STATE WILDCATS","CALIFORNIA BAPTIST LANCERS","CHICAGO STATE COUGARS","CSU BAKERSFIELD ROADRUNNERS","GRAND CANYON ANTELOPES","KANSAS CITY ROOS","NEW MEXICO STATE AGGIES","SEATTLE","UTAH VALLEY WOLVERINES","UTRGV VAQUEROS","ALABAMA A&M BULLDOGS","ALABAMA STATE HORNETS","ALCORN STATE BRAVES","ARKANSAS-PINE BLUFF GOLDEN LIONS","GRAMBLING TIGERS","JACKSON STATE TIGERS","MISSISSIPPI VALLEY STATE DELTA DEVILS","PRAIRIE VIEW A&M PANTHERS","SOUTHERN JAGUARS","TEXAS SOUTHERN TIGERS","ABILENE CHRISTIAN WILDCATS","CENTRAL ARKANSAS BEARS","HOUSTON BAPTIST HUSKIES","INCARNATE WORD CARDINALS","LAMAR CARDINALS","MCNEESE COWBOYS","NEW ORLEANS PRIVATEERS","NICHOLLS","NORTHWESTERN STATE","SAM HOUSTON STATE BEARKATS","SE LOUISIANA LIONS","STEPHEN F. AUSTIN LUMBERJACKS","TEXAS A&M-CC ISLANDERS","CHATTANOOGA MOCS","CITADEL BULLDOGS","ETSU BUCCANEERS","FURMAN PALADINS","MERCER BEARS","SAMFORD BULLDOGS","UNC GREENSBORO SPARTANS","VMI KEYDETS","WESTERN CAROLINA CATAMOUNTS","WOFFORD TERRIERS","BRADLEY","DRAKE","EVANSVILLE","ILLINOIS STATE","INDIANA STATE","MISSOURI STATE","NORTHERN IOWA","SOUTHERN ILLINOIS","VALPARAISO","ALABAMA","ARKANSAS","AUBURN","FLORIDA","GEORGIA","KENTUCKY","LSU","MISSISSIPPI STATE","MISSOURI","OLE MISS","SOUTH CAROLINA","TENNESSEE","TEXAS A&M","VANDERBILT","AMERICAN","ARMY","BOSTON UNIVERSITY","BUCKNELL","COLGATE","HOLY CROSS","LAFAYETTE","LEHIGH","LOYOLA (MD)","ARIZONA STATE","ARIZONA","CALIFORNIA","COLORADO","OREGON STATE","OREGON","STANFORD","UCLA","USC","UTAH","WASHINGTON STATE","WASHINGTON","BELMONT","EASTERN ILLINOIS","JACKSONVILLE STATE","MOREHEAD STATE","MURRAY STATE","SE MISSOURI STATE","SIUE","TENNESSEE STATE","TENNESSEE TECH","UT MARTIN","COPPIN STATE","DELAWARE STATE","HOWARD","MARYLAND EASTERN SHORE","MORGAN STATE","NORFOLK STATE","NORTH CAROLINA CENTRAL","SOUTH CAROLINA STATE","AKRON","BALL STATE","BOWLING GREEN","BUFFALO","CENTRAL MICHIGAN","EASTERN MICHIGAN","KENT STATE","MIAMI OHIO","NORTHERN ILLINOIS","OHIO","TOLEDO","WESTERN MICHIGAN","CANISIUS","FAIRFIELD","IONA","MANHATTAN","MARIST","MONMOUTH","NIAGARA","QUINNIPIAC","RIDER","SAINT PETERS","SIENA","BROWN","COLUMBIA","CORNELL","DARTMOUTH","HARVARD","PENN","PRINCETON","YALE","CLEVELAND STATE","DETROIT MERCY","GREEN BAY","IUPUI","MILWAUKEE","NORTHERN KENTUCKY","OAKLAND","UIC","WRIGHT STATE","YOUNGSTOWN STATE","CHARLOTTE","FIU","FLORIDA ATLANTIC","LOUISIANA TECH","MARSHALL","MIDDLE TENNESSEE","NORTH TEXAS","OLD DOMINION","RICE","SOUTHERN MISS","UAB","UTEP","UTSA","WKU","CHARLESTON","DELAWARE","DREXEL","ELON","HOFSTRA","JAMES MADISON","NORTHEASTERN","TOWSON","UNC WILMINGTON","WILLIAM & MARY","BAYLOR","IOWA STATE","KANSAS STATE","KANSAS","OKLAHOMA STATE","OKLAHOMA","TCU","TEXAS TECH","TEXAS","WEST VIRGINIA","CAL POLY","CAL STATE FULLERTON","CSU BAKERSFIELD","CSUN","HAWAII","LONG BEACH STATE","UC DAVIS","UC IRVINE","UC RIVERSIDE","UC SAN DIEGO","UC SANTA BARBARA","CHARLESTON SOUTHERN","GARDNER-WEBB","HIGH POINT","LONGWOOD","PRESBYTERIAN","RADFORD","UNC ASHEVILLE","USC UPSTATE","WINTHROP","EASTERN WASHINGTON","IDAHO STATE","IDAHO","MONTANA STATE","MONTANA","NORTHERN ARIZONA","NORTHERN COLORADO","PORTLAND STATE","SACRAMENTO STATE","WEBER STATE","BUTLER","CREIGHTON","DEPAUL","GEORGETOWN","MARQUETTE","PROVIDENCE","SETON HALL","ST. JOHN'S","UCONN","VILLANOVA","XAVIER","DAVIDSON","DAYTON","DUQUESNE","FORDHAM","GEORGE MASON","GEORGE WASHINGTON","LA SALLE","LOYOLA CHICAGO","RHODE ISLAND","RICHMOND","SAINT JOSEPH'S","SAINT LOUIS","ST. BONAVENTURE","UMASS","VCU","AUSTIN PEAY","BELLARMINE","CENTRAL ARKANSAS","EASTERN KENTUCKY","FLORIDA GULF COAST","JACKSONVILLE","LIPSCOMB","NORTH ALABAMA","NORTH FLORIDA","QUEENS","STETSON","WEST GEORGIA","BOSTON COLLEGE","CLEMSON","DUKE","FLORIDA STATE","GEORGIA TECH","LOUISVILLE","MIAMI (FL)","NORTH CAROLINA STATE","NORTH CAROLINA","NOTRE DAME","PITTSBURGH","SYRACUSE","VIRGINIA TECH","VIRGINIA","WAKE FOREST","ALBANY","BINGHAMTON","HARTFORD","MAINE","NEW HAMPSHIRE","STONY BROOK","UMASS LOWELL","UMBC","VERMONT","CENTRAL FLORIDA","CINCINNATI","CONNECTICUT","EAST CAROLINA","HOUSTON","MEMPHIS","NAVY","SOUTH FLORIDA","SOUTHERN METHODIST","TEMPLE","TULANE","TULSA","WICHITA STATE","ILLINOIS","INDIANA","IOWA","MARYLAND","MICHIGAN STATE","MICHIGAN","MINNESOTA","NEBRASKA","NORTHWESTERN","OHIO STATE","PENN STATE","PURDUE","RUTGERS","WISCONSIN"];
+
+const STRIP_WORDS = ['university','of','the','at','college','state','a&m','&'];
+
+function normalizeForMatch(s) {
+  return s.toUpperCase()
+    .replace(/[^A-Z0-9 ]/g, ' ')
+    .split(/\s+/)
+    .filter(w => !STRIP_WORDS.includes(w.toLowerCase()))
+    .join(' ')
+    .trim();
+}
+
+function fuzzyMatchTeam(xmlName) {
+  if (!xmlName) return null;
+  const q = xmlName.toUpperCase().trim();
+  if (TEAM_CATALOG.includes(q)) return q;
+  const startMatch = TEAM_CATALOG.find(c => c.startsWith(q + ' ') || c === q);
+  if (startMatch) return startMatch;
+  const revMatch = TEAM_CATALOG.find(c => q.startsWith(c + ' ') || q === c);
+  if (revMatch) return revMatch;
+  const qNorm = normalizeForMatch(xmlName);
+  const qWords = qNorm.split(' ').filter(Boolean);
+  let best = null, bestScore = 0;
+  for (const c of TEAM_CATALOG) {
+    const cNorm = normalizeForMatch(c);
+    const cWords = cNorm.split(' ').filter(Boolean);
+    const overlap = qWords.filter(w => cWords.includes(w)).length;
+    const score = overlap / Math.max(qWords.length, cWords.length);
+    if (score > bestScore) { bestScore = score; best = c; }
+  }
+  return bestScore >= 0.5 ? best : null;
+}
+
+async function fetchTeamColor(catalogName) {
+  const url = COLOR_BASE + encodeURIComponent(catalogName) + '.jpg';
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) return null;
+    const blob = await resp.blob();
+    return await extractColorFromBlob(blob);
+  } catch { return null; }
+}
+
+function extractColorFromBlob(blob) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(blob);
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = img.width; c.height = img.height;
+      c.getContext('2d').drawImage(img, 0, 0);
+      const d = c.getContext('2d').getImageData(Math.floor(img.width/2), Math.floor(img.height/2), 1, 1).data;
+      URL.revokeObjectURL(url);
+      resolve('#' + [d[0],d[1],d[2]].map(v => v.toString(16).padStart(2,'0')).join(''));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+    img.src = url;
+  });
+}
+
+// ESPN API: queries baseball + softball + basketball endpoints in parallel
+const ESPN_LOGO_BASE = 'https://a.espncdn.com/i/teamlogos/ncaa/500/';
+const ESPN_ENDPOINTS = [
+  'https://site.api.espn.com/apis/site/v2/sports/baseball/college-baseball/teams?limit=900',
+  'https://site.api.espn.com/apis/site/v2/sports/baseball/college-softball/teams?limit=900',
+  'https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/teams?limit=1000',
+];
+let espnTeamMap = null, espnFetchPromise = null;
+
+async function getEspnTeamMap() {
+  if (espnTeamMap) return espnTeamMap;
+  if (espnFetchPromise) return espnFetchPromise;
+  espnFetchPromise = (async () => {
+    const map = {};
+    const results = await Promise.allSettled(
+      ESPN_ENDPOINTS.map(url => fetch(url).then(r => r.ok ? r.json() : Promise.reject(r.status)))
+    );
+    // basketball first (lowest priority), baseball/softball override
+    for (const result of [results[2], results[0], results[1]]) {
+      if (result.status !== 'fulfilled') continue;
+      const teams = result.value?.sports?.[0]?.leagues?.[0]?.teams || result.value?.teams || [];
+      for (const entry of teams) {
+        const t = entry.team || entry;
+        if (!t.id) continue;
+        const color    = t.color         ? '#' + t.color.replace(/^#/,'')         : null;
+        const altColor = t.alternateColor ? '#' + t.alternateColor.replace(/^#/,'') : null;
+        const rec = { id: t.id, color, altColor };
+        for (const key of [t.displayName, t.shortDisplayName, t.abbreviation, t.nickname, t.location, t.name]) {
+          if (key) map[key.toUpperCase().trim()] = rec;
+        }
+      }
+    }
+    espnTeamMap = map;
+    return map;
+  })();
+  return espnFetchPromise;
+}
+
+async function resolveEspnTeam(xmlName) {
+  const map = await getEspnTeamMap();
+  if (!map || !Object.keys(map).length) return null;
+  const q = xmlName.toUpperCase().trim();
+  if (map[q]) return map[q];
+  for (const [key, rec] of Object.entries(map)) {
+    if (key.startsWith(q + ' ') || q.startsWith(key + ' ')) return rec;
+  }
+  const qNorm = normalizeForMatch(xmlName);
+  const qWords = qNorm.split(' ').filter(Boolean);
+  let best = null, bestScore = 0;
+  for (const [key, rec] of Object.entries(map)) {
+    const kWords = normalizeForMatch(key).split(' ').filter(Boolean);
+    const score = qWords.filter(w => kWords.includes(w)).length / Math.max(qWords.length, kWords.length);
+    if (score > bestScore) { bestScore = score; best = rec; }
+  }
+  return bestScore >= 0.5 ? best : null;
+}
+
+// Resolve logo — sets <img id="logoVis|logoHom"> src
+async function resolveTeamLogo(side, xmlName) {
+  const el = document.getElementById(side === 'vis' ? 'logoVis' : 'logoHom');
+  if (!el) return;
+  const espn = await resolveEspnTeam(xmlName);
+  if (!espn?.id) { el.style.display = 'none'; return; }
+  el.onload  = () => { el.style.display = ''; };
+  el.onerror = () => { el.style.display = 'none'; };
+  el.src = `${ESPN_LOGO_BASE}${espn.id}.png`;
+  el.alt = xmlName;
+}
+
+// Resolve color — ESPN API first, teamcolors pixel second, TEAM_COLORS table already applied as base
+let _lastResolvedVis = '', _lastResolvedHom = '';
+async function resolveTeamColorAuto(side, xmlName, id) {
+  // ── Path 1: ESPN API color ─────────────────────────────────────────────
+  const espn = await resolveEspnTeam(xmlName);
+  if (espn?.color) {
+    const hex = espn.color;
+    // Reject near-black, near-white — ESPN sometimes returns 000000/ffffff as placeholders
+    const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+    const lum = 0.299*r + 0.587*g + 0.114*b;
+    if (lum > 15 && lum < 245) {
+      const dr = Math.round(r*0.35).toString(16).padStart(2,'0');
+      const dg = Math.round(g*0.35).toString(16).padStart(2,'0');
+      const db = Math.round(b*0.35).toString(16).padStart(2,'0');
+      applySideColors(side, { primary: hex, dark: '#'+dr+dg+db });
+      return;
+    }
+  }
+  // ── Path 2: teamcolors pixel ───────────────────────────────────────────
+  const catalogName = fuzzyMatchTeam(xmlName);
+  if (catalogName) {
+    const hex = await fetchTeamColor(catalogName);
+    if (hex) {
+      const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+      const dr = Math.round(r*0.35).toString(16).padStart(2,'0');
+      const dg = Math.round(g*0.35).toString(16).padStart(2,'0');
+      const db = Math.round(b*0.35).toString(16).padStart(2,'0');
+      applySideColors(side, { primary: hex, dark: '#'+dr+dg+db });
+      return;
+    }
+  }
+  // ── Path 3: TEAM_COLORS table (already applied before this runs) ───────
+  // Nothing to do — the table lookup already ran in parseGame
+}
+
+// ════════════════════════════════════════════════════════════════════════════
 // TODAY / TONIGHT LOGIC
 // ════════════════════════════════════════════════════════════════════════════
 // If game start time is before 5:00 PM local → "TODAY"
@@ -1516,6 +1697,12 @@ function parseGame(xmlText) {
       applySideColors('vis', getTeamColors(visId, visName));
       applySideColors('hom', getTeamColors(homId, homName));
       colorsLockedFor = visName + homName;
+      // Async: ESPN API + teamcolors will refine colors and load logos
+      // (runs after TEAM_COLORS base is already painted, so no flash)
+      resolveTeamColorAuto('vis', visName, visId);
+      resolveTeamColorAuto('hom', homName, homId);
+      resolveTeamLogo('vis', visName);
+      resolveTeamLogo('hom', homName);
     }
 
 
