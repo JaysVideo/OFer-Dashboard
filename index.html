@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ESPN-0Fers V5</title>
+<title>ESPN 0-Fer Dashboard</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='4' fill='%23d00000'/><text x='16' y='22' font-size='18' text-anchor='middle' font-family='Arial Black,sans-serif' font-weight='900' fill='white'>0F</text></svg>">
 <link rel="shortcut icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='4' fill='%23d00000'/><text x='16' y='22' font-size='18' text-anchor='middle' font-family='Arial Black,sans-serif' font-weight='900' fill='white'>0F</text></svg>">
 <link href="https://fonts.cdnfonts.com/css/futura-std-4" rel="stylesheet">
@@ -92,6 +92,15 @@
   .menu-instruction-txt div{color:#ccc;}
   .menu-shortcut-key{color:#f5a623;min-width:28px;display:inline-block;font-weight:700;}
   .menu-file-input{display:none;}
+  .menu-resource-link{
+    display:flex;align-items:center;gap:9px;
+    background:#1e2230;border:1px solid #333;
+    color:#ccc;font-family:'Share Tech Mono',monospace;
+    font-size:10px;letter-spacing:0.5px;
+    padding:9px 12px;text-decoration:none;
+    transition:all 0.15s;
+  }
+  .menu-resource-link:hover{background:#252a38;border-color:#f5a623;color:#f5a623;}
   .espn-badge{
     background:var(--espn-red);color:#fff;
     font-family:'Oswald',sans-serif;font-weight:700;font-size:20px;letter-spacing:1px;
@@ -828,6 +837,14 @@
       <div>&nbsp;&nbsp;&nbsp;to override stat line</div>
     </div>
     <div class="menu-divider"></div>
+    <div class="menu-section-label">Resources</div>
+    <div style="display:flex;flex-direction:column;gap:6px;padding:4px 0;">
+      <a class="menu-resource-link" href="https://drive.google.com/drive/folders/1mXvQSxQGtTBAlUxe5YIxkH2ysPMcRmHM?usp=drive_link" target="_blank" rel="noopener">
+        <span style="font-size:13px;flex-shrink:0;">📁</span>
+        Xpression XMLs &amp; Datalinq Config
+      </a>
+    </div>
+    <div class="menu-divider"></div>
     <div class="menu-section-label">Status</div>
     <div style="display:flex;align-items:center;gap:8px;padding:4px 0;">
       <span class="sdot" id="sdot"></span>
@@ -846,7 +863,6 @@
     <div class="espn-badge">ESPN</div>
     <div style="display:flex;flex-direction:column;gap:1px;">
       <div class="hdr-title">0-FER Dashboard</div>
-      <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#888;letter-spacing:2px;">ESPN-0Fers V5</div>
     </div>
     <div class="live-pill" id="livePill"><span class="live-dot"></span>LIVE</div>
   </div>
@@ -3404,7 +3420,8 @@ function updateBasesDiamond(status) {
 
 
 // ════════════════════════════════════════════════════════════════════════════
-// V5 — INNING SCORING STRIP
+// ════════════════════════════════════════════════════════════════════════════
+// INNING SCORING STRIP
 // ════════════════════════════════════════════════════════════════════════════
 function updateScoringStrip(xml, visName, homName, curInn) {
   const strip = document.getElementById('scoringStrip');
@@ -3452,7 +3469,8 @@ function updateScoringStrip(xml, visName, homName, curInn) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// V5 — GAME NOTES
+// ════════════════════════════════════════════════════════════════════════════
+// GAME NOTES
 // ════════════════════════════════════════════════════════════════════════════
 window._gameNotes = window._gameNotes || {};
 
@@ -3495,7 +3513,8 @@ function showNoteInput(cardEl) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// V5 — AUTO-BACKUP XML OUTPUT
+// ════════════════════════════════════════════════════════════════════════════
+// AUTO-BACKUP XML OUTPUT
 // Saves a timestamped copy when the inning changes
 // ════════════════════════════════════════════════════════════════════════════
 async function autoBackupOutput(inning, topBot) {
@@ -3521,10 +3540,8 @@ async function autoBackupOutput(inning, topBot) {
   }
 }
 
-// ════════════════════════════════════════════════════════════════════════════
-// V5 — VERSION
-// ════════════════════════════════════════════════════════════════════════════
-// ESPN-0Fers V5
+
+
 
 
 
