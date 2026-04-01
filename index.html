@@ -934,7 +934,6 @@
       <div class="empty">
         <div class="ico">⚾</div>
         BROWSE TO YOUR LIVE XML FILE<br>
-        <span style="color:#f5a623">\\sb-venus-p\xml\2026.xml</span><br>
         REFRESHES EVERY 10 SECONDS
       </div>
     </div>
@@ -1698,7 +1697,7 @@ async function readXML() {
     } else {
       // Fallback file gone stale — prompt re-select
       if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
-      const fname = fallbackFile?.name || '2026.xml';
+      const fname = fallbackFile?.name || 'XML file';
       setStat('err', `FILE STALE — RE-SELECT ${fname} TO RESUME`);
       const btn = document.getElementById('fileBtn');
       if (btn) {
