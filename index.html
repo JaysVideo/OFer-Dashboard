@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ESPN 0-Fer Dashboard</title>
+<title>ESPN OFer Dashboard</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='4' fill='%23d00000'/><text x='16' y='22' font-size='18' text-anchor='middle' font-family='Arial Black,sans-serif' font-weight='900' fill='white'>0F</text></svg>">
 <link rel="shortcut icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='4' fill='%23d00000'/><text x='16' y='22' font-size='18' text-anchor='middle' font-family='Arial Black,sans-serif' font-weight='900' fill='white'>0F</text></svg>">
 <link href="https://fonts.cdnfonts.com/css/futura-std-4" rel="stylesheet">
@@ -778,7 +778,7 @@
 <!-- Slide-out side menu -->
 <div class="side-menu" id="sideMenu">
   <div class="side-menu-header">
-    <span class="side-menu-title">ESPN 0-Fer</span>
+    <span class="side-menu-title">ESPN OFer</span>
     <button class="side-menu-close" onclick="closeMenu()">✕</button>
   </div>
   <div class="side-menu-body">
@@ -862,7 +862,7 @@
     </button>
     <div class="espn-badge">ESPN</div>
     <div style="display:flex;flex-direction:column;gap:1px;">
-      <div class="hdr-title">0-FER Dashboard</div>
+      <div class="hdr-title">OFer Dashboard</div>
     </div>
     <div class="live-pill" id="livePill"><span class="live-dot"></span>LIVE</div>
   </div>
@@ -2717,7 +2717,7 @@ function sb(lbl, val) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// ESPN 0-FER ENGINE — strict guide compliance
+// ESPN OFer ENGINE — strict guide compliance
 // ════════════════════════════════════════════════════════════════════════════
 function buildOfer(p) {
   const { ab, h, rbi, r, so, bb, s, d, t, hr, gidp, sb, sf, roe, fc } = p;
@@ -2809,8 +2809,8 @@ function buildOfer(p) {
     return { text:`${abStr}${parts.length ? ` (${parts.join(', ')})` : ''}`, cls:'pos' };
   }
 
-  // ── 0-FER ─────────────────────────────────────────────────────────────────
-  // RULE 1: Show ONLY K, GIDP, Sac Fly, ROE, FC in a 0-fer
+  // ── OFer ─────────────────────────────────────────────────────────────────
+  // RULE 1: Show ONLY K, GIDP, Sac Fly, ROE, FC in an OFer
   // RULE 2: Strikeouts drop the moment ANY positive info exists (handled — h=0 here)
   const neg = [];
   if (so   > 0) neg.push(so===1   ? 'Strikeout'       : `${so} Strikeouts`);
@@ -2818,7 +2818,7 @@ function buildOfer(p) {
   if (sf   > 0) neg.push(sf===1   ? 'Sac Fly'         : `${sf} Sac Flies`);
   if (roe  > 0) neg.push('Reached on Error');
   if (fc   > 0) neg.push(fc===1   ? "Fielder's Choice" : `${fc} Fielder's Choices`);
-  // RULE 1: HBP and BB not shown in 0-fer
+  // RULE 1: HBP and BB not shown in OFer
 
   if (neg.length) return { text:`${abStr} (${neg.join(', ')})`, cls:'neg' };
   return { text:abStr, cls:'neg' };
@@ -2909,7 +2909,7 @@ function getAtBatResult(players, batterShort) {
     if (!looksLikeScore && firstItem) {
       primary = firstItem.toUpperCase();
     } else if (looksLikeScore) {
-      // Check player's roe stat — reached on error looks like 0-fer but isn't an out
+      // Check player's roe stat — reached on error looks like OFer but isn't an out
       if (p.roe > 0)      primary = 'REACHED ON ERROR';
       else if (ofer.cls === 'neg') primary = 'OUT';
       else if (ofer.cls === 'pos') primary = 'HIT';
