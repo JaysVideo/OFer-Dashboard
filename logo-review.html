@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ESPN OFer — Logo Review</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0a0c10; --s1:#13161e; --s2:#1a1e28; --s3:#0d0f14;
+  --border:#252a38; --border2:#2e3448;
+  --text:#e8eaf0; --muted:#9ba3b2; --dim:#3e4a5e;
+  --red:#d00000; --green:#00c97a; --gold:#f5a623;
+  --approve:#00c97a; --deny:#d00000; --pending:#f5a623;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Oswald',sans-serif;min-height:100vh;}
+
+/* ── HEADER ── */
+header{
+  background:var(--s3);border-bottom:3px solid var(--red);
+  padding:14px 24px;display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:100;
+}
+.hdr-left{display:flex;align-items:center;gap:14px;}
+.espn-badge{
+  background:var(--red);color:#fff;font-weight:700;font-size:18px;letter-spacing:1px;
+  padding:3px 14px 3px 9px;clip-path:polygon(0 0,90% 0,100% 100%,0% 100%);
+}
+.hdr-title{font-size:16px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#ccc;}
+.hdr-sub{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--dim);letter-spacing:2px;margin-top:2px;}
+
+/* ── STATS BAR ── */
+.stats-bar{
+  background:var(--s1);border-bottom:1px solid var(--border);
+  padding:10px 24px;display:flex;align-items:center;gap:24px;flex-wrap:wrap;
+}
+.stat{display:flex;align-items:center;gap:8px;font-family:'Share Tech Mono',monospace;font-size:11px;}
+.stat-val{font-size:20px;font-weight:700;font-family:'Oswald',sans-serif;}
+.stat-val.green{color:var(--green);}
+.stat-val.red{color:var(--red);}
+.stat-val.gold{color:var(--gold);}
+.stat-lbl{color:var(--muted);letter-spacing:1px;}
+.stat-divider{width:1px;height:28px;background:var(--border2);}
+
+.filter-row{
+  display:flex;align-items:center;gap:10px;margin-left:auto;flex-wrap:wrap;
+}
+.filter-btn{
+  font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:1px;
+  padding:5px 12px;border:1px solid var(--border2);background:transparent;
+  color:var(--muted);cursor:pointer;text-transform:uppercase;transition:all .15s;
+}
+.filter-btn:hover{border-color:#888;color:#fff;}
+.filter-btn.active{border-color:var(--gold);color:var(--gold);background:rgba(245,166,35,.08);}
+.filter-btn.active.green{border-color:var(--green);color:var(--green);background:rgba(0,201,122,.08);}
+.filter-btn.active.red{border-color:var(--red);color:var(--red);background:rgba(208,0,0,.08);}
+
+/* ── PROGRESS ── */
+.progress-wrap{background:var(--s1);border-bottom:1px solid var(--border);padding:8px 24px;}
+.progress-track{background:var(--border);height:4px;border-radius:2px;overflow:hidden;}
+.progress-fill{height:100%;background:var(--green);transition:width .4s ease;}
+.progress-lbl{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--muted);margin-top:5px;letter-spacing:1px;}
+
+/* ── LOADING STATE ── */
+.loading-screen{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:60vh;gap:16px;
+}
+.spinner{
+  width:40px;height:40px;border:3px solid var(--border2);
+  border-top-color:var(--red);border-radius:50%;
+  animation:spin .8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-txt{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:2px;}
+
+/* ── GRID ── */
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));
+  gap:10px;padding:16px 24px;
+}
+
+/* ── CARD ── */
+.card{
+  background:var(--s1);border:1px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden;
+  transition:border-color .15s, box-shadow .15s;
+  position:relative;
+}
+.card:hover{border-color:#444;box-shadow:0 4px 20px rgba(0,0,0,.5);}
+.card.approved{border-color:var(--approve);}
+.card.denied{border-color:var(--deny);opacity:.75;}
+.card.pending{border-color:var(--border);}
+
+/* Status strip at top of card */
+.card-status-strip{
+  height:3px;flex-shrink:0;
+  background:var(--border);
+}
+.card.approved .card-status-strip{background:var(--approve);}
+.card.denied   .card-status-strip{background:var(--deny);}
+
+/* Logo area */
+.logo-area{
+  display:flex;align-items:center;justify-content:center;
+  height:110px;background:var(--s2);position:relative;
+  overflow:hidden;
+}
+.logo-area::after{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at center, transparent 40%, var(--s2) 100%);
+  pointer-events:none;
+}
+.team-logo{
+  width:72px;height:72px;object-fit:contain;
+  filter:drop-shadow(0 2px 8px rgba(0,0,0,.6));
+  position:relative;z-index:1;transition:transform .2s;
+}
+.card:hover .team-logo{transform:scale(1.05);}
+.logo-missing{
+  font-family:'Share Tech Mono',monospace;font-size:9px;
+  color:var(--dim);letter-spacing:1px;text-align:center;
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+}
+.logo-missing .no-icon{font-size:28px;opacity:.3;}
+
+/* Card info */
+.card-info{padding:10px 12px 8px 12px;flex:1;}
+.catalog-name{
+  font-size:13px;font-weight:700;letter-spacing:.5px;
+  text-transform:uppercase;color:#fff;line-height:1.2;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.espn-match{
+  font-family:'Share Tech Mono',monospace;font-size:9px;
+  color:var(--muted);margin-top:4px;letter-spacing:.5px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.match-score{
+  font-family:'Share Tech Mono',monospace;font-size:9px;
+  color:var(--dim);margin-top:2px;
+}
+.match-score.exact{color:var(--green);}
+.match-score.fuzzy{color:var(--gold);}
+.match-score.none{color:var(--deny);}
+
+/* Action buttons */
+.card-actions{display:flex;border-top:1px solid var(--border);}
+.action-btn{
+  flex:1;padding:9px 4px;border:none;cursor:pointer;
+  font-family:'Oswald',sans-serif;font-size:11px;font-weight:600;
+  letter-spacing:1.5px;text-transform:uppercase;transition:all .15s;
+  display:flex;align-items:center;justify-content:center;gap:5px;
+}
+.action-btn.approve{
+  background:rgba(0,201,122,.1);color:var(--approve);
+  border-right:1px solid var(--border);
+}
+.action-btn.approve:hover{background:var(--approve);color:#000;}
+.action-btn.deny{
+  background:rgba(208,0,0,.08);color:#ff6b6b;
+}
+.action-btn.deny:hover{background:var(--deny);color:#fff;}
+.card.approved .action-btn.approve{background:var(--approve);color:#000;}
+.card.denied   .action-btn.deny{background:var(--deny);color:#fff;}
+
+/* Override input */
+.override-row{
+  padding:6px 10px;border-top:1px solid var(--border);
+  background:var(--s3);display:none;
+}
+.card.denied .override-row{display:block;}
+.override-input{
+  width:100%;background:transparent;border:none;border-bottom:1px solid #333;
+  color:var(--gold);font-family:'Share Tech Mono',monospace;font-size:9px;
+  padding:3px 0;outline:none;letter-spacing:.5px;
+}
+.override-input::placeholder{color:var(--dim);}
+.override-input:focus{border-bottom-color:var(--gold);}
+
+/* ── BULK ACTIONS ── */
+.bulk-bar{
+  position:sticky;bottom:0;background:var(--s3);
+  border-top:1px solid var(--border);
+  padding:12px 24px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+}
+.bulk-btn{
+  font-family:'Oswald',sans-serif;font-size:12px;font-weight:600;
+  letter-spacing:1px;text-transform:uppercase;
+  padding:8px 18px;border:1px solid var(--border2);
+  background:var(--s2);color:var(--text);cursor:pointer;transition:all .15s;
+}
+.bulk-btn:hover{background:var(--s1);border-color:#888;}
+.bulk-btn.primary{background:var(--red);border-color:var(--red);color:#fff;}
+.bulk-btn.primary:hover{background:#ff2020;}
+.bulk-status{
+  font-family:'Share Tech Mono',monospace;font-size:10px;
+  color:var(--green);letter-spacing:1px;margin-left:auto;
+}
+.bulk-status.hidden{display:none;}
+
+/* ── EXPORT PANEL ── */
+.export-panel{
+  background:var(--s1);border:1px solid var(--border);
+  margin:0 24px 16px;padding:16px;
+}
+.export-hd{
+  font-family:'Share Tech Mono',monospace;font-size:10px;
+  color:var(--muted);letter-spacing:2px;text-transform:uppercase;
+  margin-bottom:10px;
+}
+.export-box{
+  width:100%;height:120px;background:var(--s3);
+  border:1px solid var(--border2);color:#ccc;
+  font-family:'Share Tech Mono',monospace;font-size:10px;
+  padding:10px;resize:vertical;outline:none;letter-spacing:.3px;line-height:1.7;
+}
+.export-hint{
+  font-family:'Share Tech Mono',monospace;font-size:9px;
+  color:var(--dim);margin-top:6px;letter-spacing:.5px;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hdr-left">
+    <div class="espn-badge">ESPN</div>
+    <div>
+      <div class="hdr-title">OFer — Logo Review</div>
+      <div class="hdr-sub">APPROVE OR DENY ESPN LOGO MATCHES PER TEAM</div>
+    </div>
+  </div>
+</header>
+
+<div class="stats-bar" id="statsBar">
+  <div class="stat">
+    <span class="stat-val gold" id="statTotal">—</span>
+    <span class="stat-lbl">TOTAL</span>
+  </div>
+  <div class="stat-divider"></div>
+  <div class="stat">
+    <span class="stat-val green" id="statApproved">0</span>
+    <span class="stat-lbl">APPROVED</span>
+  </div>
+  <div class="stat-divider"></div>
+  <div class="stat">
+    <span class="stat-val red" id="statDenied">0</span>
+    <span class="stat-lbl">DENIED</span>
+  </div>
+  <div class="stat-divider"></div>
+  <div class="stat">
+    <span class="stat-val gold" id="statPending">—</span>
+    <span class="stat-lbl">PENDING</span>
+  </div>
+  <div class="filter-row">
+    <button class="filter-btn active" onclick="setFilter('all',this)">ALL</button>
+    <button class="filter-btn" onclick="setFilter('pending',this)">PENDING</button>
+    <button class="filter-btn active green" onclick="setFilter('approved',this)" id="filterApproved">APPROVED</button>
+    <button class="filter-btn active red" onclick="setFilter('denied',this)" id="filterDenied">DENIED</button>
+    <button class="filter-btn" onclick="setFilter('no-match',this)">NO MATCH</button>
+  </div>
+</div>
+
+<div class="progress-wrap" id="progressWrap" style="display:none">
+  <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+  <div class="progress-lbl" id="progressLbl">REVIEWED 0 OF 0</div>
+</div>
+
+<div id="loadingScreen" class="loading-screen">
+  <div class="spinner" id="loadSpinner"></div>
+  <div class="loading-txt" id="loadingTxt">FETCHING ESPN TEAM DATA…</div>
+  <div id="errorBox" style="display:none;max-width:520px;width:100%;padding:0 24px;">
+    <div style="background:var(--s1);border:1px solid var(--deny);padding:20px;margin-bottom:16px;">
+      <div style="font-family:'Share Tech Mono',monospace;font-size:11px;color:#ff6b6b;letter-spacing:1px;margin-bottom:8px;">⚠ ESPN API FETCH FAILED</div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--muted);line-height:1.8;" id="errorDetail"></div>
+    </div>
+    <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#ccc;letter-spacing:1px;margin-bottom:6px;">OPTION 1 — UPLOAD JSON FILE <span style="color:var(--gold)">(RECOMMENDED)</span></div>
+    <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.5px;margin-bottom:10px;line-height:1.8;">
+      1. Open this URL in Chrome on desktop and save as .json:<br>
+      <a href="https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/teams?limit=1000" target="_blank" style="color:var(--gold);word-break:break-all;font-size:8px;">site.api.espn.com → …/mens-college-basketball/teams?limit=1000</a><br>
+      2. Upload that file below
+    </div>
+    <div style="position:relative;margin-bottom:16px;">
+      <label for="jsonFileInput" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;background:var(--red);border:none;color:#fff;font-family:'Oswald',sans-serif;font-size:14px;font-weight:700;letter-spacing:2px;padding:14px;cursor:pointer;text-transform:uppercase;transition:filter .15s;" id="fileUploadLabel" onmouseover="this.style.filter='brightness(1.2)'" onmouseout="this.style.filter=''">
+        📁 UPLOAD ESPN JSON FILE
+      </label>
+      <input type="file" id="jsonFileInput" accept=".json,application/json,text/plain" style="display:none" onchange="loadFromFile(this)">
+    </div>
+    <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#888;letter-spacing:1px;margin-bottom:6px;">OPTION 2 — PASTE JSON</div>
+    <textarea id="pasteBox" style="width:100%;height:80px;background:var(--s3);border:1px solid var(--border2);color:var(--text);font-family:'Share Tech Mono',monospace;font-size:10px;padding:10px;outline:none;resize:vertical;" placeholder="Paste raw ESPN JSON here…"></textarea>
+    <div style="display:flex;gap:10px;margin-top:8px;">
+      <button onclick="parsePasted()" style="flex:1;background:var(--s2);border:1px solid var(--border2);color:#fff;font-family:'Oswald',sans-serif;font-size:12px;font-weight:600;letter-spacing:1px;padding:9px;cursor:pointer;text-transform:uppercase;">▶ PARSE PASTE</button>
+      <button onclick="retryFetch()" style="flex:1;background:var(--s2);border:1px solid var(--border2);color:var(--muted);font-family:'Oswald',sans-serif;font-size:12px;font-weight:600;letter-spacing:1px;padding:9px;cursor:pointer;text-transform:uppercase;">↺ RETRY FETCH</button>
+    </div>
+  </div>
+</div>
+
+<div id="gridWrap" style="display:none">
+  <div class="grid" id="grid"></div>
+
+  <div class="export-panel" id="exportPanel" style="display:none">
+    <div class="export-hd">APPROVED OVERRIDES — paste into logo-overrides.js in the dashboard repo</div>
+    <textarea class="export-box" id="exportBox" readonly></textarea>
+    <div class="export-hint">Denied entries with a custom override URL are included. Copy this object into the dashboard's LOGO_OVERRIDES constant.</div>
+  </div>
+</div>
+
+<div class="bulk-bar">
+  <button class="bulk-btn" onclick="approveAll()">✓ APPROVE ALL VISIBLE</button>
+  <button class="bulk-btn" onclick="denyAll()">✕ DENY ALL VISIBLE</button>
+  <button class="bulk-btn" onclick="resetAll()">↺ RESET ALL</button>
+  <button class="bulk-btn primary" onclick="exportResults()">⬇ EXPORT APPROVALS</button>
+  <span class="bulk-status hidden" id="bulkStatus"></span>
+</div>
+
+<script>
+'use strict';
+
+// ── Same catalog + matching logic as the dashboard ──────────────────────────
+const TEAM_CATALOG = ["BYU","GONZAGA","LOYOLA MARYMOUNT","PACIFIC","PEPPERDINE","PORTLAND","SAINT MARYS","SAN DIEGO","SAN FRANCISCO","SANTA CLARA","APPALACHIAN STATE","ARKANSAS LITTLE ROCK","ARKANSAS STATE","COASTAL CAROLINA","GEORGIA SOUTHERN","GEORGIA STATE","HAMPTON","LOUISIANA MONROE","LOUISIANA","SOUTH ALABAMA","TEXAS ARLINGTON","TEXAS STATE","TROY","AIR FORCE FALCONS","BOISE STATE BRONCOS","COLORADO STATE RAMS","FRESNO STATE BULLDOGS","HAWAII RAINBOW WARRIORS","NEVADA WOLF PACK","NEW MEXICO LOBOS","SAN DIEGO STATE AZTECS","SAN JOSE STATE SPARTANS","UNLV REBELS","UTAH STATE AGGIES","WYOMING COWBOYS","BRYANT BULLDOGS","CENTRAL CONNECTICUT BLUE DEVILS","FAIRLEIGH DICKINSON KNIGHTS","LONG ISLAND SHARKS","MERRIMACK WARRIORS","MOUNT ST MARYS MOUNTAINEERS","ROBERT MORRIS COLONIALS","SACRED HEART PIONEERS","ST FRANCIS BROOKLYN TERRIERS","ST FRANCIS PA RED FLASH","WAGNER SEAHAWKS","DENVER PIONEERS","NDSU BISON","NORTH DAKOTA FIGHTING HAWKS","OMAHA MAVERICKS","ORAL ROBERTS GOLDEN EAGLES","PURDUE FORT WAYNE MASTODONS","SOUTH DAKOTA COYOTES","SOUTH DAKOTA STATE JACKRABBITS","WESTERN ILLINOIS LEATHERNECKS","EASTERN WASHINGTON EAGLES","IDAHO STATE BENGALS","IDAHO VANDALS","MONTANA GRIZZLIES","MONTANA STATE BOBCATS","NORTHERN ARIZONA LUMBERJACKS","NORTHERN COLORADO BEARS","PORTLAND STATE VIKINGS","SACRAMENTO STATE HORNETS","SOUTHERN UTAH THUNDERBIRDS","WEBER STATE WILDCATS","CALIFORNIA BAPTIST LANCERS","CHICAGO STATE COUGARS","CSU BAKERSFIELD ROADRUNNERS","GRAND CANYON ANTELOPES","KANSAS CITY ROOS","NEW MEXICO STATE AGGIES","SEATTLE","UTAH VALLEY WOLVERINES","UTRGV VAQUEROS","ALABAMA A&M BULLDOGS","ALABAMA STATE HORNETS","ALCORN STATE BRAVES","ARKANSAS-PINE BLUFF GOLDEN LIONS","GRAMBLING TIGERS","JACKSON STATE TIGERS","MISSISSIPPI VALLEY STATE DELTA DEVILS","PRAIRIE VIEW A&M PANTHERS","SOUTHERN JAGUARS","TEXAS SOUTHERN TIGERS","ABILENE CHRISTIAN WILDCATS","CENTRAL ARKANSAS BEARS","HOUSTON BAPTIST HUSKIES","INCARNATE WORD CARDINALS","LAMAR CARDINALS","MCNEESE COWBOYS","NEW ORLEANS PRIVATEERS","NICHOLLS","NORTHWESTERN STATE","SAM HOUSTON STATE BEARKATS","SE LOUISIANA LIONS","STEPHEN F. AUSTIN LUMBERJACKS","TEXAS A&M-CC ISLANDERS","CHATTANOOGA MOCS","CITADEL BULLDOGS","ETSU BUCCANEERS","FURMAN PALADINS","MERCER BEARS","SAMFORD BULLDOGS","UNC GREENSBORO SPARTANS","VMI KEYDETS","WESTERN CAROLINA CATAMOUNTS","WOFFORD TERRIERS","BRADLEY","DRAKE","EVANSVILLE","ILLINOIS STATE","INDIANA STATE","MISSOURI STATE","NORTHERN IOWA","SOUTHERN ILLINOIS","VALPARAISO","ALABAMA","ARKANSAS","AUBURN","FLORIDA","GEORGIA","KENTUCKY","LSU","MISSISSIPPI STATE","MISSOURI","OLE MISS","SOUTH CAROLINA","TENNESSEE","TEXAS A&M","VANDERBILT","AMERICAN","ARMY","BOSTON UNIVERSITY","BUCKNELL","COLGATE","HOLY CROSS","LAFAYETTE","LEHIGH","LOYOLA (MD)","ARIZONA STATE","ARIZONA","CALIFORNIA","COLORADO","OREGON STATE","OREGON","STANFORD","UCLA","USC","UTAH","WASHINGTON STATE","WASHINGTON","BELMONT","EASTERN ILLINOIS","JACKSONVILLE STATE","MOREHEAD STATE","MURRAY STATE","SE MISSOURI STATE","SIUE","TENNESSEE STATE","TENNESSEE TECH","UT MARTIN","COPPIN STATE","DELAWARE STATE","HOWARD","MARYLAND EASTERN SHORE","MORGAN STATE","NORFOLK STATE","NORTH CAROLINA CENTRAL","SOUTH CAROLINA STATE","AKRON","BALL STATE","BOWLING GREEN","BUFFALO","CENTRAL MICHIGAN","EASTERN MICHIGAN","KENT STATE","MIAMI OHIO","NORTHERN ILLINOIS","OHIO","TOLEDO","WESTERN MICHIGAN","CANISIUS","FAIRFIELD","IONA","MANHATTAN","MARIST","MONMOUTH","NIAGARA","QUINNIPIAC","RIDER","SAINT PETERS","SIENA","BROWN","COLUMBIA","CORNELL","DARTMOUTH","HARVARD","PENN","PRINCETON","YALE","CLEVELAND STATE","DETROIT MERCY","GREEN BAY","IUPUI","MILWAUKEE","NORTHERN KENTUCKY","OAKLAND","UIC","WRIGHT STATE","YOUNGSTOWN STATE","CHARLOTTE","FIU","FLORIDA ATLANTIC","LOUISIANA TECH","MARSHALL","MIDDLE TENNESSEE","NORTH TEXAS","OLD DOMINION","RICE","SOUTHERN MISS","UAB","UTEP","UTSA","WKU","CHARLESTON","DELAWARE","DREXEL","ELON","HOFSTRA","JAMES MADISON","NORTHEASTERN","TOWSON","UNC WILMINGTON","WILLIAM & MARY","BAYLOR","IOWA STATE","KANSAS STATE","KANSAS","OKLAHOMA STATE","OKLAHOMA","TCU","TEXAS TECH","TEXAS","WEST VIRGINIA","CAL POLY","CAL STATE FULLERTON","CSU BAKERSFIELD","CSUN","HAWAII","LONG BEACH STATE","UC DAVIS","UC IRVINE","UC RIVERSIDE","UC SAN DIEGO","UC SANTA BARBARA","CHARLESTON SOUTHERN","GARDNER-WEBB","HIGH POINT","LONGWOOD","PRESBYTERIAN","RADFORD","UNC ASHEVILLE","USC UPSTATE","WINTHROP","EASTERN WASHINGTON","IDAHO STATE","IDAHO","MONTANA STATE","MONTANA","NORTHERN ARIZONA","NORTHERN COLORADO","PORTLAND STATE","SACRAMENTO STATE","WEBER STATE","BUTLER","CREIGHTON","DEPAUL","GEORGETOWN","MARQUETTE","PROVIDENCE","SETON HALL","ST. JOHN'S","UCONN","VILLANOVA","XAVIER","DAVIDSON","DAYTON","DUQUESNE","FORDHAM","GEORGE MASON","GEORGE WASHINGTON","LA SALLE","LOYOLA CHICAGO","RHODE ISLAND","RICHMOND","SAINT JOSEPH'S","SAINT LOUIS","ST. BONAVENTURE","UMASS","VCU","AUSTIN PEAY","BELLARMINE","CENTRAL ARKANSAS","EASTERN KENTUCKY","FLORIDA GULF COAST","JACKSONVILLE","LIPSCOMB","NORTH ALABAMA","NORTH FLORIDA","QUEENS","STETSON","WEST GEORGIA","BOSTON COLLEGE","CLEMSON","DUKE","FLORIDA STATE","GEORGIA TECH","LOUISVILLE","MIAMI (FL)","NORTH CAROLINA STATE","NORTH CAROLINA","NOTRE DAME","PITTSBURGH","SYRACUSE","VIRGINIA TECH","VIRGINIA","WAKE FOREST","ALBANY","BINGHAMTON","HARTFORD","MAINE","NEW HAMPSHIRE","STONY BROOK","UMASS LOWELL","UMBC","VERMONT","CENTRAL FLORIDA","CINCINNATI","CONNECTICUT","EAST CAROLINA","HOUSTON","MEMPHIS","NAVY","SOUTH FLORIDA","SOUTHERN METHODIST","TEMPLE","TULANE","TULSA","WICHITA STATE","ILLINOIS","INDIANA","IOWA","MARYLAND","MICHIGAN STATE","MICHIGAN","MINNESOTA","NEBRASKA","NORTHWESTERN","OHIO STATE","PENN STATE","PURDUE","RUTGERS","WISCONSIN"];
+
+const STRIP_WORDS = ['university','of','the','at','college','state','a&m','&'];
+
+function normalizeForMatch(s) {
+  return s.toUpperCase().replace(/[^A-Z0-9 ]/g,' ').split(/\s+/)
+    .filter(w => !STRIP_WORDS.includes(w.toLowerCase())).join(' ').trim();
+}
+
+// ── State ────────────────────────────────────────────────────────────────────
+let espnMap    = {};       // displayName.toUpperCase() → { id, logoUrl, displayName }
+let matchData  = [];       // { catalog, espn, logoUrl, matchType, score }
+let decisions  = {};       // catalog name → { state:'approved'|'denied'|'pending', override:'' }
+let activeFilter = 'all';
+
+const STORAGE_KEY = 'ofer_logo_decisions_v1';
+
+function loadDecisions() {
+  try { decisions = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch { decisions = {}; }
+}
+function saveDecisions() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(decisions)); } catch {}
+}
+
+// ── Match each catalog entry ─────────────────────────────────────────────────
+function buildMatchData() {
+  const results = [];
+  for (const cat of TEAM_CATALOG) {
+    const q = cat.toUpperCase().trim();
+    let rec = null, matchType = 'none', score = 0;
+
+    // 1. Exact
+    if (espnMap[q]) { rec = espnMap[q]; matchType = 'exact'; score = 1; }
+
+    // 2. Prefix
+    if (!rec) {
+      for (const [key, r] of Object.entries(espnMap)) {
+        if (key.startsWith(q + ' ') || q.startsWith(key + ' ')) {
+          rec = r; matchType = 'prefix'; score = 0.9; break;
+        }
+      }
+    }
+
+    // 3. Fuzzy
+    if (!rec) {
+      const qNorm  = normalizeForMatch(cat);
+      const qWords = qNorm.split(' ').filter(Boolean);
+      let best = null, bestScore = 0, bestRec = null;
+      for (const [key, r] of Object.entries(espnMap)) {
+        const kWords = normalizeForMatch(key).split(' ').filter(Boolean);
+        const s = qWords.filter(w => kWords.includes(w)).length / Math.max(qWords.length, kWords.length);
+        if (s > bestScore) { bestScore = s; best = key; bestRec = r; }
+      }
+      if (bestScore >= 0.5) { rec = bestRec; matchType = 'fuzzy'; score = bestScore; }
+    }
+
+    results.push({
+      catalog: cat,
+      espn: rec ? rec.displayName : null,
+      logoUrl: rec ? rec.logoUrl : null,
+      matchType,
+      score
+    });
+  }
+  return results;
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function getDecision(cat) {
+  return decisions[cat] || { state: 'pending', override: '' };
+}
+
+function visibleCards() {
+  return matchData.filter(d => {
+    const dec = getDecision(d.catalog);
+    if (activeFilter === 'all')      return true;
+    if (activeFilter === 'pending')  return dec.state === 'pending';
+    if (activeFilter === 'approved') return dec.state === 'approved';
+    if (activeFilter === 'denied')   return dec.state === 'denied';
+    if (activeFilter === 'no-match') return d.matchType === 'none';
+    return true;
+  });
+}
+
+function renderGrid() {
+  const grid = document.getElementById('grid');
+  const visible = visibleCards();
+  grid.innerHTML = '';
+
+  if (visible.length === 0) {
+    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60px;font-family:\'Share Tech Mono\',monospace;font-size:11px;color:var(--dim);letter-spacing:2px;">NO ENTRIES MATCH THIS FILTER</div>';
+    return;
+  }
+
+  for (const d of visible) {
+    const dec   = getDecision(d.catalog);
+    const state = dec.state;
+    const card  = document.createElement('div');
+    card.className = 'card ' + state;
+    card.dataset.cat = d.catalog;
+
+    const matchLabel = d.matchType === 'exact'  ? '✓ EXACT'
+                     : d.matchType === 'prefix' ? '~ PREFIX'
+                     : d.matchType === 'fuzzy'  ? `~ FUZZY ${Math.round(d.score*100)}%`
+                     : '✕ NO MATCH';
+    const matchCls   = d.matchType === 'exact'  ? 'exact'
+                     : d.matchType === 'none'   ? 'none' : 'fuzzy';
+
+    const logoHtml = d.logoUrl
+      ? `<img class="team-logo" src="${d.logoUrl}" alt="${d.catalog}" onerror="this.parentElement.innerHTML='<div class=\\'logo-missing\\'><div class=\\'no-icon\\'>?</div><div>IMG FAILED</div></div>'">`
+      : `<div class="logo-missing"><div class="no-icon">—</div><div>NO MATCH</div></div>`;
+
+    const overrideVal = dec.override || '';
+
+    card.innerHTML = `
+      <div class="card-status-strip"></div>
+      <div class="logo-area">${logoHtml}</div>
+      <div class="card-info">
+        <div class="catalog-name" title="${d.catalog}">${d.catalog}</div>
+        <div class="espn-match" title="${d.espn || 'no match'}">${d.espn || '—'}</div>
+        <div class="match-score ${matchCls}">${matchLabel}</div>
+      </div>
+      <div class="card-actions">
+        <button class="action-btn approve" onclick="decide('${d.catalog}','approved')">✓ USE</button>
+        <button class="action-btn deny"    onclick="decide('${d.catalog}','denied')">✕ DENY</button>
+      </div>
+      <div class="override-row">
+        <input class="override-input" placeholder="PASTE CORRECT LOGO URL…" value="${overrideVal}"
+          oninput="setOverride('${d.catalog}',this.value)" type="url">
+      </div>
+    `;
+    grid.appendChild(card);
+  }
+
+  updateStats();
+  updateProgress();
+}
+
+function updateStats() {
+  const approved = matchData.filter(d => getDecision(d.catalog).state === 'approved').length;
+  const denied   = matchData.filter(d => getDecision(d.catalog).state === 'denied').length;
+  const pending  = matchData.filter(d => getDecision(d.catalog).state === 'pending').length;
+  document.getElementById('statTotal').textContent    = matchData.length;
+  document.getElementById('statApproved').textContent = approved;
+  document.getElementById('statDenied').textContent   = denied;
+  document.getElementById('statPending').textContent  = pending;
+}
+
+function updateProgress() {
+  const reviewed = matchData.filter(d => getDecision(d.catalog).state !== 'pending').length;
+  const total    = matchData.length;
+  const pct      = total ? Math.round(reviewed / total * 100) : 0;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressLbl').textContent  = `REVIEWED ${reviewed} OF ${total} (${pct}%)`;
+  document.getElementById('progressWrap').style.display = '';
+}
+
+// ── Actions ──────────────────────────────────────────────────────────────────
+function decide(cat, state) {
+  const prev = getDecision(cat);
+  // Toggle off if clicking same state
+  const newState = prev.state === state ? 'pending' : state;
+  decisions[cat] = { state: newState, override: prev.override || '' };
+  saveDecisions();
+
+  // Update just this card's classes + buttons without full re-render
+  const card = document.querySelector(`.card[data-cat="${CSS.escape(cat)}"]`);
+  if (card) {
+    card.className = 'card ' + newState;
+    const strip = card.querySelector('.card-status-strip');
+    // show override row only when denied
+    const overRow = card.querySelector('.override-row');
+    if (overRow) overRow.style.display = newState === 'denied' ? '' : 'none';
+    // update button highlights
+    card.querySelectorAll('.action-btn').forEach(b => {
+      b.style.background = '';b.style.color = '';
+    });
+    const approveBtn = card.querySelector('.action-btn.approve');
+    const denyBtn    = card.querySelector('.action-btn.deny');
+    if (newState === 'approved' && approveBtn) { approveBtn.style.background='var(--approve)'; approveBtn.style.color='#000'; }
+    if (newState === 'denied'   && denyBtn)    { denyBtn.style.background='var(--deny)'; denyBtn.style.color='#fff'; }
+    if (strip) {
+      strip.style.background = newState==='approved' ? 'var(--approve)' : newState==='denied' ? 'var(--deny)' : 'var(--border)';
+    }
+  }
+  updateStats();
+  updateProgress();
+}
+
+function setOverride(cat, url) {
+  const d = decisions[cat] || { state: 'denied', override: '' };
+  decisions[cat] = { ...d, override: url.trim() };
+  saveDecisions();
+}
+
+function setFilter(f, btn) {
+  // Toggle multi-filter for approved/denied, single select for others
+  if (f === 'all') {
+    activeFilter = 'all';
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  } else {
+    document.querySelector('.filter-btn[onclick*="\'all\'"]').classList.remove('active');
+    btn.classList.toggle('active');
+    // Determine combined filter
+    const activeBtns = [...document.querySelectorAll('.filter-btn.active')];
+    if (!activeBtns.length) { activeFilter = 'all'; document.querySelector('.filter-btn[onclick*="\'all\'"]').classList.add('active'); }
+    else activeFilter = f; // simplified — last clicked
+  }
+  activeFilter = f;
+  renderGrid();
+}
+
+function approveAll() {
+  for (const d of visibleCards()) {
+    if (d.matchType !== 'none') {
+      decisions[d.catalog] = { state: 'approved', override: getDecision(d.catalog).override || '' };
+    }
+  }
+  saveDecisions(); renderGrid(); flash('APPROVED ' + visibleCards().filter(d=>d.matchType!=='none').length + ' TEAMS');
+}
+
+function denyAll() {
+  for (const d of visibleCards()) {
+    decisions[d.catalog] = { state: 'denied', override: getDecision(d.catalog).override || '' };
+  }
+  saveDecisions(); renderGrid(); flash('DENIED ALL VISIBLE');
+}
+
+function resetAll() {
+  if (!confirm('Reset ALL decisions? This cannot be undone.')) return;
+  decisions = {}; saveDecisions(); renderGrid(); flash('ALL DECISIONS RESET');
+}
+
+function exportResults() {
+  const lines = [];
+  for (const d of matchData) {
+    const dec = getDecision(d.catalog);
+    if (dec.state === 'approved' && d.logoUrl) {
+      lines.push(`  '${d.catalog}': '${d.logoUrl}',`);
+    } else if (dec.state === 'denied' && dec.override) {
+      lines.push(`  '${d.catalog}': '${dec.override}',  // manual override`);
+    }
+  }
+  const out = `const LOGO_OVERRIDES = {\n${lines.join('\n')}\n};`;
+  document.getElementById('exportBox').value = out;
+  document.getElementById('exportPanel').style.display = '';
+  document.getElementById('exportPanel').scrollIntoView({ behavior: 'smooth' });
+  // Also copy
+  try { navigator.clipboard.writeText(out); flash('EXPORTED & COPIED TO CLIPBOARD'); }
+  catch { flash('EXPORTED — SEE BOX BELOW'); }
+}
+
+function flash(msg) {
+  const el = document.getElementById('bulkStatus');
+  el.textContent = msg; el.classList.remove('hidden');
+  setTimeout(() => el.classList.add('hidden'), 3000);
+}
+
+function setLoadingTxt(t) { document.getElementById('loadingTxt').textContent = t; }
+
+function showError(msg) {
+  document.getElementById('loadSpinner').style.display = 'none';
+  document.getElementById('loadingTxt').style.display  = 'none';
+  document.getElementById('errorDetail').textContent   = msg;
+  document.getElementById('errorBox').style.display    = '';
+}
+
+function processEspnData(data) {
+  const teams = data?.sports?.[0]?.leagues?.[0]?.teams || data?.leagues?.[0]?.teams || data?.teams || [];
+  if (!teams.length) throw new Error('No teams found in response — unexpected JSON structure.');
+  const map = {};
+  for (const entry of teams) {
+    const t = entry.team || entry;
+    if (!t.id) continue;
+    const logoUrl = t.logos?.[0]?.href || null;
+    const rec = { id: t.id, logoUrl, displayName: t.displayName || '' };
+    for (const key of [t.displayName, t.shortDisplayName, t.abbreviation, t.nickname, t.location, t.name]) {
+      if (key) map[key.toUpperCase().trim()] = rec;
+    }
+  }
+  return map;
+}
+
+function launch(map) {
+  espnMap   = map;
+  matchData = buildMatchData();
+  document.getElementById('loadingScreen').style.display = 'none';
+  document.getElementById('gridWrap').style.display = '';
+  renderGrid();
+}
+
+function loadFromFile(input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  document.getElementById('fileUploadLabel').textContent = '⏳ READING ' + file.name + '…';
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      const map  = processEspnData(data);
+      if (!Object.keys(map).length) throw new Error('Parsed OK but map is empty — unexpected JSON structure.');
+      launch(map);
+    } catch(err) {
+      alert('Could not parse ' + file.name + ':\n' + err.message);
+      document.getElementById('fileUploadLabel').textContent = '📁 UPLOAD JSON FILE';
+    }
+  };
+  reader.onerror = () => alert('File read failed.');
+  reader.readAsText(file);
+}
+
+function parsePasted() {
+  const raw = document.getElementById('pasteBox').value.trim();
+  if (!raw) { alert('Paste the ESPN JSON first.'); return; }
+  try {
+    const data = JSON.parse(raw);
+    const map  = processEspnData(data);
+    if (!Object.keys(map).length) throw new Error('Parsed OK but map is empty.');
+    launch(map);
+  } catch(e) {
+    alert('Parse error: ' + e.message);
+  }
+}
+
+async function retryFetch() {
+  document.getElementById('loadSpinner').style.display = '';
+  document.getElementById('loadingTxt').style.display  = '';
+  document.getElementById('loadingTxt').textContent    = 'RETRYING…';
+  document.getElementById('errorBox').style.display    = 'none';
+  await init();
+}
+
+async function init() {
+  loadDecisions();
+  // Try direct fetch first
+  try {
+    setLoadingTxt('FETCHING ESPN TEAM DATA…');
+    const resp = await fetch('https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/teams?limit=1000');
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    setLoadingTxt('BUILDING MATCH TABLE…');
+    const map = processEspnData(data);
+    if (Object.keys(map).length > 0) { launch(map); return; }
+    throw new Error('Map built but empty.');
+  } catch(e) {
+    console.warn('Direct fetch failed:', e.message);
+  }
+  // Try via corsproxy.io as fallback
+  try {
+    setLoadingTxt('TRYING CORS PROXY…');
+    const proxy = 'https://corsproxy.io/?' + encodeURIComponent('https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/teams?limit=1000');
+    const resp2 = await fetch(proxy);
+    if (!resp2.ok) throw new Error('Proxy HTTP ' + resp2.status);
+    const data2 = await resp2.json();
+    setLoadingTxt('BUILDING MATCH TABLE…');
+    const map2 = processEspnData(data2);
+    if (Object.keys(map2).length > 0) { launch(map2); return; }
+    throw new Error('Proxy map empty.');
+  } catch(e2) {
+    console.warn('Proxy fetch failed:', e2.message);
+  }
+  // Both failed — show manual load UI
+  showError('Network fetch unavailable in this environment.\nPlease upload the ESPN JSON file using the button below.');
+}
+
+init();
+</script>
+</body>
+</html>
