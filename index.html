@@ -1931,13 +1931,21 @@ async function resolveTeamLogo(side, xmlName, xmlId) {
 // Resolve color — ESPN API first, teamcolors pixel second, TEAM_COLORS table already applied as base
 let _lastResolvedVis = '', _lastResolvedHom = '';
 async function resolveTeamColorAuto(side, xmlName, xmlId) {
-  // If the id or name already has an entry in TEAM_COLORS, that was applied
-  // synchronously in parseGame — only override it if ESPN gives us something better.
-  // But first: use xmlId for the ESPN lookup to avoid ambiguous name fuzzy matches
-  // (e.g. "Miami (Ohio)" fuzzy-matching Miami Hurricanes in ESPN's map).
-  const lookupName = xmlId && xmlId.length > 2 ? xmlId : xmlName;
+  // If TEAM_COLORS already has a confident match for this team (applied synchronously
+  // in parseGame), don't overwrite it with a potentially wrong ESPN fuzzy match.
+  const idKey   = (xmlId   || '').toUpperCase().trim();
+  const nameKey = (xmlName || '').toUpperCase().trim();
+  const hasTableEntry =
+    (idKey   && TEAM_COLORS[idKey]   && TEAM_COLORS[idKey]   !== TEAM_COLORS['DEFAULT']) ||
+    (nameKey && TEAM_COLORS[nameKey] && TEAM_COLORS[nameKey] !== TEAM_COLORS['DEFAULT']);
+  if (hasTableEntry) return; // trust the table — no async override
 
-  // ── Path 1: ESPN API color (use id-based lookup name) ─────────────────────
+  // Also check partial/word matches from getTeamColors
+  const tableColors = getTeamColors(xmlId, xmlName);
+  if (tableColors !== TEAM_COLORS['DEFAULT']) return; // table had a real match
+
+  // ── Path 1: ESPN API color (use id for lookup to avoid fuzzy mismatches) ──
+  const lookupName = idKey.length > 2 ? idKey : nameKey;
   const espn = await resolveEspnTeam(lookupName) || await resolveEspnTeam(xmlName);
   if (espn?.color) {
     const hex = espn.color;
@@ -1948,7 +1956,7 @@ async function resolveTeamColorAuto(side, xmlName, xmlId) {
       return;
     }
   }
-  // ── Path 2: teamcolors pixel ───────────────────────────────────────────
+  // ── Path 2: teamcolors pixel ───────────────────────────────────────────────
   const catalogName = fuzzyMatchTeam(xmlName) || fuzzyMatchTeam(xmlId || '');
   if (catalogName) {
     const hex = await fetchTeamColor(catalogName);
@@ -1957,7 +1965,7 @@ async function resolveTeamColorAuto(side, xmlName, xmlId) {
       return;
     }
   }
-  // ── Path 3: TEAM_COLORS table (already applied synchronously) ─────────────
+  // ── Path 3: TEAM_COLORS table already applied — nothing more to do ─────────
 }
 
 // ════════════════════════════════════════════════════════════════════════════
