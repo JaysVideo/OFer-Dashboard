@@ -1702,7 +1702,11 @@ const LOGO_OVERRIDES = {
   'CENTRAL MICHIGAN': 'https://a.espncdn.com/i/teamlogos/ncaa/500/2117.png',
   'EASTERN MICHIGAN': 'https://a.espncdn.com/i/teamlogos/ncaa/500/2199.png',
   'KENT STATE': 'https://a.espncdn.com/i/teamlogos/ncaa/500/2309.png',
+  'KENT ST.': 'https://a.espncdn.com/i/teamlogos/ncaa/500/2309.png',
+  'KENT ST': 'https://a.espncdn.com/i/teamlogos/ncaa/500/2309.png',
   'MIAMI OHIO': 'https://a.espncdn.com/i/teamlogos/ncaa/500/193.png',
+  'MIAMI (OHIO)': 'https://a.espncdn.com/i/teamlogos/ncaa/500/193.png',
+  'MIAMI (O': 'https://a.espncdn.com/i/teamlogos/ncaa/500/193.png',
   'NORTHERN ILLINOIS': 'https://a.espncdn.com/i/teamlogos/ncaa/500/2459.png',
   'OHIO': 'https://a.espncdn.com/i/teamlogos/ncaa/500/195.png',
   'TOLEDO': 'https://a.espncdn.com/i/teamlogos/ncaa/500/2649.png',
@@ -1882,23 +1886,33 @@ const LOGO_OVERRIDES = {
   'WISCONSIN': 'https://a.espncdn.com/i/teamlogos/ncaa/500/275.png',
 };
 
-// Resolve logo — checks LOGO_OVERRIDES first, then falls back to ESPN API
-async function resolveTeamLogo(side, xmlName) {
+// Resolve logo — checks id first, then name, then prefix, then ESPN API
+async function resolveTeamLogo(side, xmlName, xmlId) {
   const el = document.getElementById(side === 'vis' ? 'logoVis' : 'logoHom');
   if (!el) return;
 
-  // 1. Check hardcoded overrides first — no network needed
-  const q = xmlName.toUpperCase().trim();
-  let logoUrl = LOGO_OVERRIDES[q] || null;
+  // 1. Try XML id attribute first — most reliable, avoids all ambiguity
+  const qId = (xmlId || '').toUpperCase().trim();
+  let logoUrl = qId ? (LOGO_OVERRIDES[qId] || null) : null;
 
-  // 2. Try prefix strip variants (e.g. "Nebraska Cornhuskers" → "Nebraska")
+  // 2. Exact name match
   if (!logoUrl) {
-    for (const [key, url] of Object.entries(LOGO_OVERRIDES)) {
-      if (q.startsWith(key + ' ') || key.startsWith(q + ' ')) { logoUrl = url; break; }
+    const qName = (xmlName || '').toUpperCase().trim();
+    logoUrl = LOGO_OVERRIDES[qName] || null;
+
+    // 3. Prefix — prefer longest key to avoid "MIAMI" stealing "MIAMI (OHIO)"
+    if (!logoUrl) {
+      let bestKey = '', bestUrl = '';
+      for (const [key, url] of Object.entries(LOGO_OVERRIDES)) {
+        if ((qName.startsWith(key + ' ') || key.startsWith(qName + ' ')) && key.length > bestKey.length) {
+          bestKey = key; bestUrl = url;
+        }
+      }
+      if (bestUrl) logoUrl = bestUrl;
     }
   }
 
-  // 3. Fall back to live ESPN API lookup if not in overrides
+  // 4. Fall back to live ESPN API
   if (!logoUrl) {
     const espn = await resolveEspnTeam(xmlName);
     logoUrl = espn?.logoUrl || null;
@@ -2145,8 +2159,8 @@ function parseGame(xmlText) {
       // (runs after TEAM_COLORS base is already painted, so no flash)
       resolveTeamColorAuto('vis', visName, visId);
       resolveTeamColorAuto('hom', homName, homId);
-      resolveTeamLogo('vis', visName);
-      resolveTeamLogo('hom', homName);
+      resolveTeamLogo('vis', visName, visId);
+      resolveTeamLogo('hom', homName, homId);
     }
 
 
