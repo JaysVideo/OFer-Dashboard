@@ -3072,6 +3072,7 @@ function renderRoster(elId, side, players, curBtr, isThisBatting, animate=false,
             '<span class="p-uni">#' + p.uni + '</span>' +
             '<span class="p-name" title="Double-click to add note" ondblclick="showNoteInput(this.closest(\'.pcard\'))" style="cursor:pointer;">' + p.name + '</span>' +
             '<span class="p-pos">' + (p.pos||'—') + '</span>' +
+            (p.bats ? '<span class="p-bats">' + (p.bats==='B'?'S':p.bats) + '</span>' : '') +
           '</div>' +
           hdrRight +
         '</div>' +
