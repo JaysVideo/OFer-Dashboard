@@ -360,6 +360,13 @@
     font-size:14px;font-weight:700;color:#b99;
     flex-shrink:0;text-transform:uppercase;letter-spacing:1px;
   }
+  .p-bats{
+    font-family:'Share Tech Mono',monospace;
+    font-size:10px;font-weight:700;color:#666;
+    flex-shrink:0;letter-spacing:1px;
+    border:1px solid #444;padding:1px 4px;
+    align-self:center;
+  }
 
   /* right chunk: HEADER text (queue position / on deck / in the hole) */
   .pcard-hdr-right{
@@ -2550,6 +2557,7 @@ function parsePlayers(teamEl) {
       // Derive from play-by-play maps built during lastPlayMap construction
       roe : (function(){ const ks = nameKeys(short||name); return ks.reduce((v,k) => v||(window._roeMap&&window._roeMap[k]),0)||n(hit?.getAttribute('roe')); })(),
       fc  : (function(){ const ks = nameKeys(short||name); return ks.reduce((v,k) => v||(window._fcMap &&window._fcMap[k]), 0)||0; })(),
+      bats: (p.getAttribute('bats') || '').toUpperCase(),
       savg: sea?.getAttribute('avg') || '',
       shr : n(sea?.getAttribute('hr')),
       srbi: n(sea?.getAttribute('rbi')),
@@ -2940,6 +2948,7 @@ function renderRoster(elId, side, players, curBtr, isThisBatting, animate=false,
       + '<span class="p-uni">#' + p.uni + '</span>'
       + '<span class="p-name">' + p.name + '</span>'
       + '<span class="p-pos">' + (p.pos||'—') + '</span>'
+          + (p.bats ? '<span class="p-bats">' + (p.bats==='B'?'S':p.bats) + '</span>' : '')
       + '</div><div class="pcard-hdr-right"><span class="queue-lbl" style="color:#555;">LAST AB</span></div></div>'
       + '<div class="graphic-body"><div class="content-area"><div class="ofer-row">'
       + ofHtml + spotLbl
@@ -3155,12 +3164,15 @@ function buildOfer(p) {
   const hbp = p.hbp || 0;
 
   // ── RULE 3: ab=0 — never show 0-0 ────────────────────────────────────────
-  // Combine SF (Rule 8), Walk (Rule 3), HBP in priority order
+  // Combine SF (Rule 8), Walk (Rule 3), HBP, and RBI in priority order
   if (ab === 0 && h === 0) {
     const parts0 = [];
     if (sf  > 0)  parts0.push(sf===1  ? 'Sac Fly'  : `${sf} Sac Flies`);
     if (bb  > 0)  parts0.push(bb===1  ? 'Walk'      : `${bb} Walks`);
     if (hbp > 0)  parts0.push(hbp===1 ? 'HBP'       : `${hbp} HBP`);
+    // Always show RBI if present — StatBroadcast sometimes records sac fly or
+    // walk RBI as ab=0/sf=0, so RBI is the only way to surface the contribution
+    if (rbi > 0)  parts0.push(rbi===1  ? 'RBI'      : `${rbi} RBI`);
     if (parts0.length > 0) return { text: parts0.join(', '), cls:'neu' };
     return { text:'—', cls:'emp' };
   }
