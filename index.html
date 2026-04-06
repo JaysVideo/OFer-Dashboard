@@ -4498,81 +4498,89 @@ function renderScorecard() {
       totRbi+=p.rbi||0; totBb+=p.bb||0; totSo+=p.so||0;
     });
 
-    var cellW = '52px';
+    var cellW = '56px';
     var th = 'style="background:#111;border:1px solid #222;padding:4px 2px;text-align:center;' +
              'font-size:12px;letter-spacing:0.5px;color:#666;font-family:monospace;white-space:nowrap;"';
-    var td = 'style="border:1px solid #1a1a1a;padding:1px;text-align:center;vertical-align:middle;' +
-             'min-width:' + cellW + ';height:62px;position:relative;"';
+    var td = 'style="border:1px solid #1a1a1a;padding:2px;text-align:center;vertical-align:middle;' +
+             'min-width:' + cellW + ';width:' + cellW + ';height:64px;"';
     var tdStat = 'style="border:1px solid #1a1a1a;padding:3px 6px;text-align:center;vertical-align:middle;' +
                  'font-size:13px;font-family:monospace;color:#aaa;white-space:nowrap;"';
     var tdName = 'style="border:1px solid #1a1a1a;padding:4px 10px;text-align:left;vertical-align:middle;' +
                  'font-size:13px;font-family:monospace;white-space:nowrap;"';
 
-    // Parse a stored entry "SYM:maxBase[s]" or legacy "SYM" format
-    function parseEntry(entry) {
-      var m = entry.match(/^([^:]+):(\d+)(s?)$/);
-      if (m) return { sym: m[1], maxBase: parseInt(m[2]), scored: m[3]==='s' };
-      // Legacy format (no advancement data)
-      var sym = entry;
-      var mb = 0;
+    // Parse stored "SYM:maxBase[s]" or legacy "SYM"
+    function parseEntry(e) {
+      var m = e.match(/^([^:]+):(\d+)(s?)$/);
+      if (m) return { sym:m[1], mb:parseInt(m[2]), scored:m[3]==='s' };
+      var sym=e, mb=0;
       if (sym==='HR') mb=4;
       else if (sym==='3B') mb=3;
       else if (sym==='2B') mb=2;
       else if (sym==='1B'||sym==='BB'||sym==='IBB'||sym==='HBP'||sym==='E'||sym==='FC') mb=1;
-      return { sym: sym, maxBase: mb, scored: sym==='HR' };
+      return { sym:sym, mb:mb, scored:sym==='HR' };
     }
 
-    // Build base diamond SVG — label centered over diamond, bases filled to maxBase
+    // Diamond SVG: 4 rotated squares as base paths, label centered
+    // viewBox 52×60. Diamond center at (26,30). Each base is a rotated square.
+    // Base positions (center points): 1B=right(40,30) 2B=top(26,16) 3B=left(12,30) H=bottom(26,44)
     function baseDiamond(entryStr) {
-      if (!entryStr) return '<span style="color:#1e1e1e;font-size:16px;">·</span>';
+      if (!entryStr) return '<span style="color:#222;font-size:18px;">·</span>';
 
       var parts = entryStr.split('/');
-      // For multi-PA, show each PA as a stacked mini cell if > 1 — use last for primary display
-      var primary = parseEntry(parts[parts.length - 1]);
-      var sym      = primary.sym;
-      var maxBase  = primary.maxBase;
-      var scored   = primary.scored;
-      var isOut    = maxBase === 0;
+      var p     = parseEntry(parts[parts.length - 1]);
+      var sym   = p.sym;
+      var mb    = p.mb;
+      var sc    = p.scored;
+      var isOut = mb === 0;
+      var col   = symColor(sym);
+      var off   = '#1e1e1e';
+      var brd   = '#3a3a3a';
 
-      var off = '#252525';
-      var brd = '#333';
-      var col = symColor(sym);
+      var c1 = mb >= 1 ? col  : off;
+      var c2 = mb >= 2 ? col  : off;
+      var c3 = mb >= 3 ? col  : off;
+      var cH = sc ? '#00c97a' : (sym==='HR' ? '#f5a623' : off);
 
-      // Base colors — filled up to maxBase, scored = home plate green
-      var c1 = maxBase >= 1 ? col  : off;
-      var c2 = maxBase >= 2 ? col  : off;
-      var c3 = maxBase >= 3 ? col  : off;
-      var cH = scored ? '#00c97a' : (sym==='HR' ? '#f5a623' : off);
-
-      // Label — abbreviated, uppercase
+      // Short label
       var lbl = sym;
       if (lbl==='GDP') lbl='DP';
       if (lbl==='HBP') lbl='HP';
       if (lbl==='IBB') lbl='IW';
       if (lbl==='GRD') lbl='GR';
-      if (lbl.match(/^[GFL]/)) lbl = lbl.substring(0,1) + (lbl.length>1?lbl.substring(1,2):'');
+      // Shorten fielding codes: G43→G4, F7→F7, L6→L6 (keep 2 chars max)
+      if (/^[GFL]\d/.test(lbl)) lbl = lbl.substring(0,2);
+      if (lbl==='KL') lbl='Kl';
 
-      // Multi-PA indicator
-      var multiTxt = parts.length > 1
-        ? '<text x="46" y="9" font-size="7" fill="#555" text-anchor="end" font-family="monospace">' + parts.length + 'x</text>'
+      var lblFill = isOut ? '#444' : col;
+      var multiMark = parts.length > 1
+        ? '<text x="50" y="8" font-size="7" fill="#555" text-anchor="end" font-family="monospace">' + parts.length + 'x</text>'
         : '';
 
-      // viewBox 48×58: diamond in center (24,28 center), label centered over it
-      var cx = 24, cy = 28, r = 9; // center and base square half-size
-      return '<svg viewBox="0 0 48 58" width="48" height="58" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:0 auto;">' +
-        multiTxt +
-        // 2B (top)
-        '<rect x="' + (cx-r) + '" y="' + (cy-2*r-1) + '" width="' + (r*2) + '" height="' + (r*2) + '" rx="2" fill="' + c2 + '" stroke="' + brd + '" stroke-width="1.2" transform="rotate(45 ' + cx + ' ' + (cy-r) + ')"/>' +
-        // 3B (left)
-        '<rect x="' + (cx-2*r-1) + '" y="' + (cy-r) + '" width="' + (r*2) + '" height="' + (r*2) + '" rx="2" fill="' + c3 + '" stroke="' + brd + '" stroke-width="1.2" transform="rotate(45 ' + (cx-r) + ' ' + cy + ')"/>' +
-        // 1B (right)
-        '<rect x="' + (cx+1) + '" y="' + (cy-r) + '" width="' + (r*2) + '" height="' + (r*2) + '" rx="2" fill="' + c1 + '" stroke="' + brd + '" stroke-width="1.2" transform="rotate(45 ' + (cx+r) + ' ' + cy + ')"/>' +
-        // Home (bottom)
-        '<rect x="' + (cx-r) + '" y="' + (cy+1) + '" width="' + (r*2) + '" height="' + (r*2) + '" rx="2" fill="' + cH + '" stroke="' + brd + '" stroke-width="1.2" transform="rotate(45 ' + cx + ' ' + (cy+r) + ')"/>' +
-        // Label — centered over diamond
-        '<text x="' + cx + '" y="' + (cy+5) + '" font-size="11" fill="' + (isOut?'#555':col) + '" text-anchor="middle" font-family="\'Oswald\',sans-serif" font-weight="700" dominant-baseline="middle">' + lbl + '</text>' +
-        // Bottom score indicator
-        (scored ? '<circle cx="' + cx + '" cy="54" r="2.5" fill="#00c97a"/>' : '') +
+      // Each base: rotated square polygon. Points = center ± offset at 45°
+      // diamond(cx,cy,s) = rotated square with half-diagonal s
+      function diamond(cx, cy, s, fill, stroke) {
+        var pts = (cx)+','+(cy-s)+' '+(cx+s)+','+(cy)+' '+(cx)+','+(cy+s)+' '+(cx-s)+','+(cy);
+        return '<polygon points="'+pts+'" fill="'+fill+'" stroke="'+stroke+'" stroke-width="1.2"/>';
+      }
+
+      var cx=26, s=8; // center x, base half-size
+
+      return '<svg viewBox="0 0 52 60" width="52" height="60" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:0 auto;">' +
+        multiMark +
+        // Base path lines (thin connectors between bases)
+        '<line x1="26" y1="16" x2="40" y2="30" stroke="#2a2a2a" stroke-width="1"/>' +
+        '<line x1="40" y1="30" x2="26" y2="44" stroke="#2a2a2a" stroke-width="1"/>' +
+        '<line x1="26" y1="44" x2="12" y2="30" stroke="#2a2a2a" stroke-width="1"/>' +
+        '<line x1="12" y1="30" x2="26" y2="16" stroke="#2a2a2a" stroke-width="1"/>' +
+        // Bases: 2B top, 3B left, 1B right, H bottom
+        diamond(26, 16, s, c2, brd) +   // 2B
+        diamond(12, 30, s, c3, brd) +   // 3B
+        diamond(40, 30, s, c1, brd) +   // 1B
+        diamond(26, 44, s, cH, brd) +   // Home
+        // Label centered in diamond
+        '<text x="26" y="30" font-size="10" fill="'+lblFill+'" text-anchor="middle" dominant-baseline="central" font-family="\'Oswald\',sans-serif" font-weight="700">'+lbl+'</text>' +
+        // Scored indicator dot
+        (sc && sym!=='HR' ? '<circle cx="26" cy="56" r="2.5" fill="#00c97a"/>' : '') +
         '</svg>';
     }
 
