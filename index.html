@@ -4292,7 +4292,7 @@ function renderScorecard() {
   function buildPaMap(vh) {
     var map = {};
 
-    function recordPlay(bname, innNum, narrText, bEl) {
+    function recordPlay(bname, innNum, narrText, bEl, playEl) {
       if (!bname || !innNum) return;
       var action = '';
 
@@ -4301,7 +4301,7 @@ function renderScorecard() {
         var av  = (bEl.getAttribute('action')   || '').trim();
         var dv  = (bEl.getAttribute('decision')  || '').trim();
         if (ab < 1 && !av && !dv) return;
-        action = dv || av;  // decision takes precedence (e.g. SF8 → SF), fallback to action
+        action = dv || av;
       } else {
         if (!narrText) return;
         var nl  = narrText.toLowerCase();
@@ -4314,54 +4314,71 @@ function renderScorecard() {
         var bLast = bname.split(',')[0].toLowerCase();
         var starts = nl.startsWith(bname.toLowerCase()) || nl.startsWith(bLast);
         if (skip || !starts) return;
-        // Use a sentinel to trigger narrative-based codeToSym directly
         if (/struck out|hit by pitch|walked|homered|tripled|doubled|singled|grounded out|grounded into double play|lined into double play|flied out|fouled out|lined out|popped up|popped out|infield fly|fielder.s choice|reached.*(error|muffed)|sacrifice bunt|sac bunt|sacrifice fly/.test(nl)) {
-          action = 'NARR'; // sentinel: let codeToSym parse from narrText
+          action = 'NARR';
         } else return;
       }
 
       var sym = codeToSym(action, narrText);
       if (!sym) return;
-      // Store under primary key only, register aliases separately
+
+      // ── Max base reached ─────────────────────────────────────────────────
+      // Start from tobase on the batter element (where they initially landed)
+      var tobaseNum = bEl ? parseInt(bEl.getAttribute('tobase') || '0') : 0;
+      var scored = false;
+
+      // Walk runner elements in the same play to find furthest advancement
+      // <runner tobase="1B|2B|3B|HP" scored="1"> tracks subsequent movement
+      if (playEl) {
+        playEl.querySelectorAll('runner').forEach(function(r) {
+          // Only count this runner if their name matches the batter
+          var rname = r.getAttribute('name') || '';
+          if (rname && rname.toLowerCase() !== bname.toLowerCase()) return;
+          var tb = (r.getAttribute('tobase') || '').toUpperCase();
+          var rScored = r.getAttribute('scored') === '1';
+          if (rScored || tb === 'HP') { scored = true; tobaseNum = 4; }
+          else if (tb === '3B' && tobaseNum < 3) tobaseNum = 3;
+          else if (tb === '2B' && tobaseNum < 2) tobaseNum = 2;
+          else if (tb === '1B' && tobaseNum < 1) tobaseNum = 1;
+        });
+      }
+      // HR always scores
+      if (sym === 'HR') { scored = true; tobaseNum = 4; }
+
       var primaryKey = bname.toLowerCase().trim();
       if (!map[primaryKey]) map[primaryKey] = {};
-      var existing = map[primaryKey][innNum] || '';
-      map[primaryKey][innNum] = existing ? existing + '/' + sym : sym;
-      // Register all name variants pointing to primary key
+      var existing = map[primaryKey][innNum];
+      // Store as "SYM:maxBase" — e.g. "2B:3" means doubled, advanced to 3rd
+      var entry = sym + ':' + tobaseNum + (scored ? 's' : '');
+      map[primaryKey][innNum] = existing ? existing + '/' + entry : entry;
+
       if (!map.__aliases__) map.__aliases__ = {};
       nameKeys(bname).forEach(function(alias) {
         if (alias !== primaryKey) map.__aliases__[alias] = primaryKey;
       });
-      // For HR plays in Format B, extract paRbi from narrative for hrRbiMap
+
       if (sym === 'HR' && !bEl && narrText) {
         var rbiMatch = narrText.match(/(\d+)\s+rbi/i);
-        var paRbiNarr = rbiMatch ? parseInt(rbiMatch[1]) : 1; // default solo if no RBI in narrative
-        // "RBI" with no number means 1 RBI
+        var paRbiNarr = rbiMatch ? parseInt(rbiMatch[1]) : 1;
         if (!rbiMatch && /\brbi\b/i.test(narrText)) paRbiNarr = 1;
         window._hrRbiMap = window._hrRbiMap || {};
         nameKeys(bname).forEach(function(k) { window._hrRbiMap[k] = paRbiNarr; });
       }
     }
 
-    // Walk every <play> element and find its inning number by walking up the DOM.
-    // This is robust across all XML formats and browser XML parsers.
     xml.querySelectorAll('play').forEach(function(play) {
-      // Walk up to find <batting vh="V|H"> parent
       var bat = play.parentElement || play.parentNode;
       if (!bat || bat.tagName.toLowerCase() !== 'batting') return;
       if (bat.getAttribute('vh') !== vh) return;
-
-      // Walk up to find <inning number="N"> grandparent
       var inn = bat.parentElement || bat.parentNode;
       if (!inn || inn.tagName.toLowerCase() !== 'inning') return;
       var innNum = parseInt(inn.getAttribute('number') || '0');
       if (!innNum) return;
-
       var bname  = play.getAttribute('batter') || '';
       var narr   = play.querySelector('narrative');
       var narrT  = narr ? (narr.getAttribute('text') || '') : '';
       var bEl    = play.querySelector('batter');
-      recordPlay(bname, innNum, narrT, bEl);
+      recordPlay(bname, innNum, narrT, bEl, play);
     });
 
     return map;
@@ -4481,74 +4498,81 @@ function renderScorecard() {
       totRbi+=p.rbi||0; totBb+=p.bb||0; totSo+=p.so||0;
     });
 
-    var cellW = '44px';  // wider to fit diamond
+    var cellW = '52px';
     var th = 'style="background:#111;border:1px solid #222;padding:4px 2px;text-align:center;' +
              'font-size:12px;letter-spacing:0.5px;color:#666;font-family:monospace;white-space:nowrap;"';
-    var td = 'style="border:1px solid #1a1a1a;padding:2px;text-align:center;vertical-align:middle;' +
-             'min-width:' + cellW + ';height:52px;position:relative;"';
+    var td = 'style="border:1px solid #1a1a1a;padding:1px;text-align:center;vertical-align:middle;' +
+             'min-width:' + cellW + ';height:62px;position:relative;"';
     var tdStat = 'style="border:1px solid #1a1a1a;padding:3px 6px;text-align:center;vertical-align:middle;' +
                  'font-size:13px;font-family:monospace;color:#aaa;white-space:nowrap;"';
     var tdName = 'style="border:1px solid #1a1a1a;padding:4px 10px;text-align:left;vertical-align:middle;' +
                  'font-size:13px;font-family:monospace;white-space:nowrap;"';
 
-    // Build a base diamond SVG for a scorecard cell
-    // sym: the play result code  scored: did this player score this inning?
-    function baseDiamond(sym, scored) {
-      if (!sym) return '<span style="color:#1e1e1e;font-size:16px;">·</span>';
+    // Parse a stored entry "SYM:maxBase[s]" or legacy "SYM" format
+    function parseEntry(entry) {
+      var m = entry.match(/^([^:]+):(\d+)(s?)$/);
+      if (m) return { sym: m[1], maxBase: parseInt(m[2]), scored: m[3]==='s' };
+      // Legacy format (no advancement data)
+      var sym = entry;
+      var mb = 0;
+      if (sym==='HR') mb=4;
+      else if (sym==='3B') mb=3;
+      else if (sym==='2B') mb=2;
+      else if (sym==='1B'||sym==='BB'||sym==='IBB'||sym==='HBP'||sym==='E'||sym==='FC') mb=1;
+      return { sym: sym, maxBase: mb, scored: sym==='HR' };
+    }
 
-      var s = sym.toUpperCase();
-      // Determine how far they reached
-      // For multi-PA cells (sym contains '/'), use the last result
-      var parts = s.split('/');
-      var last = parts[parts.length - 1];
+    // Build base diamond SVG — label centered over diamond, bases filled to maxBase
+    function baseDiamond(entryStr) {
+      if (!entryStr) return '<span style="color:#1e1e1e;font-size:16px;">·</span>';
 
-      // Base fill levels: none=0, 1B=1, 2B=2, 3B=3, HR/scored=4
-      var reached = 0;
-      if (last === 'HR')  reached = 4;
-      else if (last === '3B') reached = 3;
-      else if (last === '2B') reached = 2;
-      else if (last === '1B' || last === 'BB' || last === 'IBB' || last === 'HBP' || last === 'E' || last === 'FC') reached = 1;
-      // If scored, push to 4 regardless of hit type
-      if (scored && reached > 0) reached = 4;
+      var parts = entryStr.split('/');
+      // For multi-PA, show each PA as a stacked mini cell if > 1 — use last for primary display
+      var primary = parseEntry(parts[parts.length - 1]);
+      var sym      = primary.sym;
+      var maxBase  = primary.maxBase;
+      var scored   = primary.scored;
+      var isOut    = maxBase === 0;
 
-      var symCol = symColor(last);
+      var off = '#252525';
+      var brd = '#333';
+      var col = symColor(sym);
 
-      // Diamond geometry: 36x36 viewBox, bases at rotated squares
-      // 2B=top, 3B=left, 1B=right, home=bottom
-      var off  = '#222';    // base off
-      var dim  = '#333';    // diamond border
-      var hit  = symCol;    // reached base color
-      var run  = '#00c97a'; // scored / home color
-      var hr   = '#f5a623'; // HR color
+      // Base colors — filled up to maxBase, scored = home plate green
+      var c1 = maxBase >= 1 ? col  : off;
+      var c2 = maxBase >= 2 ? col  : off;
+      var c3 = maxBase >= 3 ? col  : off;
+      var cH = scored ? '#00c97a' : (sym==='HR' ? '#f5a623' : off);
 
-      var c1 = reached >= 1 ? hit  : off;   // 1B
-      var c2 = reached >= 2 ? hit  : off;   // 2B
-      var c3 = reached >= 3 ? hit  : off;   // 3B
-      var cH = reached >= 4 ? (last==='HR' ? hr : run) : '#1a1a1a'; // home
+      // Label — abbreviated, uppercase
+      var lbl = sym;
+      if (lbl==='GDP') lbl='DP';
+      if (lbl==='HBP') lbl='HP';
+      if (lbl==='IBB') lbl='IW';
+      if (lbl==='GRD') lbl='GR';
+      if (lbl.match(/^[GFL]/)) lbl = lbl.substring(0,1) + (lbl.length>1?lbl.substring(1,2):'');
 
-      // Label: sym text below diamond (abbreviated for space)
-      var lbl = last;
-      if (lbl === 'GDP') lbl = 'DP';
-      if (lbl.length > 3) lbl = lbl.substring(0,3);
-      var lblCol = symCol;
-
-      // Multiple PAs: show count in corner
+      // Multi-PA indicator
       var multiTxt = parts.length > 1
-        ? '<text x="34" y="8" font-size="7" fill="#555" text-anchor="end" font-family="monospace">' + parts.length + 'PA</text>'
+        ? '<text x="46" y="9" font-size="7" fill="#555" text-anchor="end" font-family="monospace">' + parts.length + 'x</text>'
         : '';
 
-      return '<svg viewBox="0 0 36 42" width="36" height="42" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:0 auto;">' +
+      // viewBox 48×58: diamond in center (24,28 center), label centered over it
+      var cx = 24, cy = 28, r = 9; // center and base square half-size
+      return '<svg viewBox="0 0 48 58" width="48" height="58" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:0 auto;">' +
         multiTxt +
         // 2B (top)
-        '<rect x="13" y="1" width="10" height="10" rx="1.5" fill="' + c2 + '" stroke="' + dim + '" stroke-width="1" transform="rotate(45 18 6)"/>' +
+        '<rect x="' + (cx-r) + '" y="' + (cy-2*r-1) + '" width="' + (r*2) + '" height="' + (r*2) + '" rx="2" fill="' + c2 + '" stroke="' + brd + '" stroke-width="1.2" transform="rotate(45 ' + cx + ' ' + (cy-r) + ')"/>' +
         // 3B (left)
-        '<rect x="1" y="13" width="10" height="10" rx="1.5" fill="' + c3 + '" stroke="' + dim + '" stroke-width="1" transform="rotate(45 6 18)"/>' +
+        '<rect x="' + (cx-2*r-1) + '" y="' + (cy-r) + '" width="' + (r*2) + '" height="' + (r*2) + '" rx="2" fill="' + c3 + '" stroke="' + brd + '" stroke-width="1.2" transform="rotate(45 ' + (cx-r) + ' ' + cy + ')"/>' +
         // 1B (right)
-        '<rect x="25" y="13" width="10" height="10" rx="1.5" fill="' + c1 + '" stroke="' + dim + '" stroke-width="1" transform="rotate(45 30 18)"/>' +
+        '<rect x="' + (cx+1) + '" y="' + (cy-r) + '" width="' + (r*2) + '" height="' + (r*2) + '" rx="2" fill="' + c1 + '" stroke="' + brd + '" stroke-width="1.2" transform="rotate(45 ' + (cx+r) + ' ' + cy + ')"/>' +
         // Home (bottom)
-        '<rect x="13" y="25" width="10" height="10" rx="1.5" fill="' + cH + '" stroke="' + dim + '" stroke-width="1" transform="rotate(45 18 30)"/>' +
-        // Label
-        '<text x="18" y="41" font-size="8" fill="' + lblCol + '" text-anchor="middle" font-family="monospace" font-weight="600">' + lbl + '</text>' +
+        '<rect x="' + (cx-r) + '" y="' + (cy+1) + '" width="' + (r*2) + '" height="' + (r*2) + '" rx="2" fill="' + cH + '" stroke="' + brd + '" stroke-width="1.2" transform="rotate(45 ' + cx + ' ' + (cy+r) + ')"/>' +
+        // Label — centered over diamond
+        '<text x="' + cx + '" y="' + (cy+5) + '" font-size="11" fill="' + (isOut?'#555':col) + '" text-anchor="middle" font-family="\'Oswald\',sans-serif" font-weight="700" dominant-baseline="middle">' + lbl + '</text>' +
+        // Bottom score indicator
+        (scored ? '<circle cx="' + cx + '" cy="54" r="2.5" fill="#00c97a"/>' : '') +
         '</svg>';
     }
 
@@ -4604,11 +4628,8 @@ function renderScorecard() {
       // Inning cells
       inns.forEach(function(n) {
         var sym = pm[n];
-        // "scored" = player has runs AND this is a hit/reach cell (rough heuristic)
-        // More precise: check if player's total runs > 0 and they reached base this inning
-        var scored = (p.r > 0) && sym && /^(1B|2B|3B|HR|BB|IBB|HBP|E|FC)/.test(sym.split('/').pop());
         if (sym) {
-          html += '<td ' + td + '>' + baseDiamond(sym, scored) + '</td>';
+          html += '<td ' + td + '>' + baseDiamond(sym) + '</td>';
         } else {
           html += '<td ' + td + '><span style="color:#1e1e1e;font-size:16px;">·</span></td>';
         }
