@@ -357,14 +357,14 @@
 
   .p-pos{
     font-family:'Futura Std','Barlow Condensed','Oswald',sans-serif;
-    font-size:14px;font-weight:700;color:#b99;
+    font-size:16px;font-weight:700;color:#b99;
     flex-shrink:0;text-transform:uppercase;letter-spacing:1px;
   }
   .p-bats{
     font-family:'Share Tech Mono',monospace;
-    font-size:10px;font-weight:700;color:#666;
+    font-size:14px;font-weight:700;color:#777;
     flex-shrink:0;letter-spacing:1px;
-    border:1px solid #444;padding:1px 4px;
+    border:1px solid #444;padding:2px 5px;
     align-self:center;
   }
 
@@ -746,6 +746,60 @@
   .acc-copy:hover{border-color:#888;color:#ccc;}
   .acc-copy.ok{background:var(--green);border-color:var(--green);color:#000;}
 
+  /* ══ SITUATION BAR ══════════════════════════════════════════════════════ */
+  .sit-bar{
+    display:none;background:var(--surface3);
+    border-bottom:2px solid var(--border);
+    padding:0;flex-shrink:0;
+  }
+  .sit-bar.on{display:flex;align-items:stretch;}
+  .sit-cell{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:6px 14px;border-right:1px solid var(--border);gap:2px;
+    font-family:'Share Tech Mono',monospace;
+  }
+  .sit-cell:last-child{border-right:none;}
+  .sit-val{font-size:18px;font-weight:700;color:#ccc;line-height:1;font-family:'Oswald',sans-serif;}
+  .sit-lbl{font-size:8px;color:#555;letter-spacing:2px;text-transform:uppercase;}
+  .sit-outs-pip{display:flex;gap:3px;margin-top:2px;}
+  .sit-pip{width:8px;height:8px;border-radius:50%;background:#2a2a2a;border:1px solid #333;}
+  .sit-pip.on{background:#f5a623;border-color:#f5a623;}
+  .sit-pitcher{
+    flex:1;display:flex;flex-direction:column;justify-content:center;
+    padding:6px 14px;border-right:1px solid var(--border);min-width:0;
+  }
+  .sit-pitcher-lbl{font-family:'Share Tech Mono',monospace;font-size:8px;color:#555;letter-spacing:2px;text-transform:uppercase;}
+  .sit-pitcher-name{font-family:'Oswald',sans-serif;font-size:15px;font-weight:700;color:#ccc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .sit-pitcher-line{font-family:'Share Tech Mono',monospace;font-size:9px;color:#666;margin-top:1px;letter-spacing:0.5px;}
+  .sit-pitches{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:6px 16px;gap:1px;
+  }
+  .sit-pitches-num{font-family:'Oswald',sans-serif;font-size:26px;font-weight:900;color:#f5a623;line-height:1;}
+  .sit-pitches-lbl{font-family:'Share Tech Mono',monospace;font-size:8px;color:#555;letter-spacing:2px;text-transform:uppercase;}
+  .sit-pitches-k{font-family:'Share Tech Mono',monospace;font-size:9px;color:#888;margin-top:1px;}
+
+  /* ══ PITCHER CARD (per panel) ════════════════════════════════════════════ */
+  .pitcher-strip{
+    display:none;
+    background:var(--surface2);border-bottom:1px solid var(--border);
+    padding:7px 12px;margin-bottom:8px;
+    border-left:3px solid #333;
+  }
+  .pitcher-strip.vis-p{border-left-color:var(--vis-primary);}
+  .pitcher-strip.hom-p{border-left-color:var(--hom-primary);}
+  .pitcher-strip.on{display:flex;align-items:center;gap:12px;}
+  .ps-label{font-family:'Share Tech Mono',monospace;font-size:8px;color:#555;letter-spacing:2px;text-transform:uppercase;flex-shrink:0;}
+  .ps-name{font-family:'Oswald',sans-serif;font-size:16px;font-weight:700;color:#ccc;white-space:nowrap;}
+  .ps-uni{font-family:'Oswald',sans-serif;font-size:14px;color:#555;margin-right:4px;}
+  .ps-era{font-family:'Share Tech Mono',monospace;font-size:10px;color:#f5a623;letter-spacing:1px;flex-shrink:0;}
+  .ps-line{font-family:'Share Tech Mono',monospace;font-size:9px;color:#666;letter-spacing:0.5px;margin-top:1px;}
+  .ps-pitches{
+    font-family:'Oswald',sans-serif;font-size:20px;font-weight:700;color:#f5a623;
+    margin-left:auto;flex-shrink:0;
+  }
+  .ps-pitches-lbl{font-family:'Share Tech Mono',monospace;font-size:8px;color:#555;letter-spacing:1px;display:block;text-align:right;}
+
   ::-webkit-scrollbar{width:3px;}
   ::-webkit-scrollbar-track{background:var(--bg);}
   ::-webkit-scrollbar-thumb{background:var(--border);}
@@ -921,7 +975,35 @@
   </div>
 </div>
 
-<div class="main">
+<!-- Situation Bar -->
+<div class="sit-bar" id="sitBar">
+  <div class="sit-cell">
+    <div class="sit-val" id="sitInning">—</div>
+    <div class="sit-lbl">INNING</div>
+  </div>
+  <div class="sit-cell">
+    <div class="sit-outs-pip" id="sitOutsPips">
+      <div class="sit-pip" id="sitPip0"></div>
+      <div class="sit-pip" id="sitPip1"></div>
+      <div class="sit-pip" id="sitPip2"></div>
+    </div>
+    <div class="sit-lbl">OUTS</div>
+  </div>
+  <div class="sit-cell">
+    <div class="sit-val" id="sitCount">—</div>
+    <div class="sit-lbl">B-S</div>
+  </div>
+  <div class="sit-pitcher" id="sitPitcherWrap">
+    <div class="sit-pitcher-lbl">PITCHING</div>
+    <div class="sit-pitcher-name" id="sitPitcherName">—</div>
+    <div class="sit-pitcher-line" id="sitPitcherLine"></div>
+  </div>
+  <div class="sit-pitches">
+    <div class="sit-pitches-num" id="sitPitchesNum">—</div>
+    <div class="sit-pitches-lbl">PITCHES</div>
+    <div class="sit-pitches-k" id="sitPitchesK"></div>
+  </div>
+</div>
   <div class="t-panel vis" id="visPanel">
     <div class="t-hdr">
       <div style="display:flex;align-items:center;gap:8px;">
@@ -938,6 +1020,22 @@
       </div>
     </div>
     <div id="visRoster">
+      <!-- Pitcher strip: shows fielding team's current pitcher when vis is batting -->
+      <div class="pitcher-strip hom-p" id="visPitcherStrip">
+        <span class="ps-label">NOW PITCHING</span>
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:baseline;gap:6px;">
+            <span class="ps-uni" id="visPitcherUni"></span>
+            <span class="ps-name" id="visPitcherName">—</span>
+            <span class="ps-era" id="visPitcherEra"></span>
+          </div>
+          <div class="ps-line" id="visPitcherLine"></div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div class="ps-pitches" id="visPitcherPitches">—</div>
+          <span class="ps-pitches-lbl">PITCHES</span>
+        </div>
+      </div>
       <div class="empty">
         <div class="ico">⚾</div>
         BROWSE TO YOUR LIVE XML FILE<br>
@@ -967,6 +1065,22 @@
       </div>
     </div>
     <div id="homRoster">
+      <!-- Pitcher strip: shows fielding team's current pitcher when home is batting -->
+      <div class="pitcher-strip vis-p" id="homPitcherStrip">
+        <span class="ps-label">NOW PITCHING</span>
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:baseline;gap:6px;">
+            <span class="ps-uni" id="homPitcherUni"></span>
+            <span class="ps-name" id="homPitcherName">—</span>
+            <span class="ps-era" id="homPitcherEra"></span>
+          </div>
+          <div class="ps-line" id="homPitcherLine"></div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div class="ps-pitches" id="homPitcherPitches">—</div>
+          <span class="ps-pitches-lbl">PITCHES</span>
+        </div>
+      </div>
       <div class="empty">
         <div class="ico">⚾</div>
         SELECT FILE ON LEFT<br>TO POPULATE LIVE STATS
@@ -2346,6 +2460,14 @@ function parseGame(xmlText) {
 
     // Bases diamond
     updateBasesDiamond(status);
+
+    // Situation bar
+    updateSituation(status, inning, topBot, outs, balls, strikes, complete);
+
+    // Pitcher strips — vis panel shows hom pitcher (when vis bats), hom panel shows vis pitcher
+    const curPitcher = status?.getAttribute('pitcher') || '';
+    renderPitcherStrip('vis', xml, curPitcher, topBot);
+    renderPitcherStrip('hom', xml, curPitcher, topBot);
 
     // Pitch count from status element
     const pitchEl = xml.querySelector('status');
@@ -3836,6 +3958,88 @@ function toggleTheme() {
 // ════════════════════════════════════════════════════════════════════════════
 // BASES DIAMOND
 // ════════════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════
+// SITUATION BAR + PITCHER STRIPS
+// ════════════════════════════════════════════════════════════════════════════
+function updateSituation(status, inning, topBot, outs, balls, strikes, complete) {
+  const bar = document.getElementById('sitBar');
+  if (!bar || complete) { if (bar) bar.classList.remove('on'); return; }
+  bar.classList.add('on');
+
+  // Inning label
+  const half = topBot === 'V' ? '▲' : '▼';
+  setText('sitInning', half + ' ' + inning);
+
+  // Outs pips
+  const outsN = parseInt(outs) || 0;
+  for (let i = 0; i < 3; i++) {
+    const pip = document.getElementById('sitPip' + i);
+    if (pip) pip.className = 'sit-pip' + (i < outsN ? ' on' : '');
+  }
+
+  // Count
+  setText('sitCount', (balls || '0') + '-' + (strikes || '0'));
+}
+
+function renderPitcherStrip(side, xml, pitcherName, battingVH) {
+  // side = 'vis' or 'hom' — this is the BATTING team's panel
+  // The pitcher shown is from the FIELDING team
+  const fieldingVH = battingVH === 'V' ? 'H' : 'V';
+  const stripEl = document.getElementById(side + 'PitcherStrip');
+  if (!stripEl) return;
+
+  if (!pitcherName) { stripEl.classList.remove('on'); return; }
+
+  // Find pitcher player element in the fielding team
+  const fieldTeam = xml.querySelector('team[vh="' + fieldingVH + '"]');
+  if (!fieldTeam) { stripEl.classList.remove('on'); return; }
+
+  // Match pitcher by shortname or name
+  let pitcherEl = null;
+  fieldTeam.querySelectorAll('player').forEach(p => {
+    const sn = p.getAttribute('shortname') || '';
+    const nm = p.getAttribute('name') || '';
+    if (sn === pitcherName || nm === pitcherName ||
+        sn.replace(/,\s*/,',') === pitcherName.replace(/,\s*/,',') ||
+        nm.replace(/,\s*/,',') === pitcherName.replace(/,\s*/,',')) {
+      pitcherEl = p;
+    }
+  });
+
+  // Get today's pitching line
+  const pit = pitcherEl ? pitcherEl.querySelector('pitching') : null;
+  const sea = pitcherEl ? pitcherEl.querySelector('pchseason') : null;
+  const uni = pitcherEl ? (pitcherEl.getAttribute('uni') || '') : '';
+
+  const ip      = pit ? (pit.getAttribute('ip') || '0.0') : '—';
+  const ph      = pit ? (pit.getAttribute('h')  || '0')   : '—';
+  const pr      = pit ? (pit.getAttribute('r')  || '0')   : '—';
+  const pbb     = pit ? (pit.getAttribute('bb') || '0')   : '—';
+  const pso     = pit ? (pit.getAttribute('so') || pit.getAttribute('k') || '0') : '—';
+  const pitches = pit ? (pit.getAttribute('pitches') || '0') : '—';
+  const strikes = pit ? (pit.getAttribute('strikes') || '—') : '—';
+  const era     = sea ? (sea.getAttribute('era') || '') : '';
+
+  // Display name — strip comma format
+  const dispName = pitcherName.includes(',')
+    ? pitcherName.split(',').map(s => s.trim()).reverse().join(' ')
+    : pitcherName;
+
+  setText(side + 'PitcherUni',    uni ? '#' + uni : '');
+  setText(side + 'PitcherName',   dispName.toUpperCase());
+  setText(side + 'PitcherEra',    era ? era + ' ERA' : '');
+  setText(side + 'PitcherLine',   'IP: ' + ip + '  H: ' + ph + '  R: ' + pr + '  BB: ' + pbb + '  K: ' + pso);
+  setText(side + 'PitcherPitches', pitches);
+
+  // Situation bar pitcher (shared)
+  setText('sitPitcherName', dispName.toUpperCase());
+  setText('sitPitcherLine', 'IP ' + ip + '  H ' + ph + '  R ' + pr + '  BB ' + pbb + '  K ' + pso + (era ? '  •  ' + era + ' ERA' : ''));
+  setText('sitPitchesNum',  pitches);
+  setText('sitPitchesK',    strikes !== '—' ? strikes + ' STR' : '');
+
+  stripEl.classList.add('on');
+}
+
 function updateBasesDiamond(status) {
   const diamond = document.getElementById('basesDiamond');
   if (!diamond) return;
@@ -4277,15 +4481,76 @@ function renderScorecard() {
       totRbi+=p.rbi||0; totBb+=p.bb||0; totSo+=p.so||0;
     });
 
-    var cellW = '28px';  // narrower inning columns
+    var cellW = '44px';  // wider to fit diamond
     var th = 'style="background:#111;border:1px solid #222;padding:4px 2px;text-align:center;' +
              'font-size:12px;letter-spacing:0.5px;color:#666;font-family:monospace;white-space:nowrap;"';
-    var td = 'style="border:1px solid #1a1a1a;padding:3px 2px;text-align:center;vertical-align:middle;' +
-             'min-width:' + cellW + ';height:36px;"';
+    var td = 'style="border:1px solid #1a1a1a;padding:2px;text-align:center;vertical-align:middle;' +
+             'min-width:' + cellW + ';height:52px;position:relative;"';
     var tdStat = 'style="border:1px solid #1a1a1a;padding:3px 6px;text-align:center;vertical-align:middle;' +
                  'font-size:13px;font-family:monospace;color:#aaa;white-space:nowrap;"';
     var tdName = 'style="border:1px solid #1a1a1a;padding:4px 10px;text-align:left;vertical-align:middle;' +
                  'font-size:13px;font-family:monospace;white-space:nowrap;"';
+
+    // Build a base diamond SVG for a scorecard cell
+    // sym: the play result code  scored: did this player score this inning?
+    function baseDiamond(sym, scored) {
+      if (!sym) return '<span style="color:#1e1e1e;font-size:16px;">·</span>';
+
+      var s = sym.toUpperCase();
+      // Determine how far they reached
+      // For multi-PA cells (sym contains '/'), use the last result
+      var parts = s.split('/');
+      var last = parts[parts.length - 1];
+
+      // Base fill levels: none=0, 1B=1, 2B=2, 3B=3, HR/scored=4
+      var reached = 0;
+      if (last === 'HR')  reached = 4;
+      else if (last === '3B') reached = 3;
+      else if (last === '2B') reached = 2;
+      else if (last === '1B' || last === 'BB' || last === 'IBB' || last === 'HBP' || last === 'E' || last === 'FC') reached = 1;
+      // If scored, push to 4 regardless of hit type
+      if (scored && reached > 0) reached = 4;
+
+      var symCol = symColor(last);
+
+      // Diamond geometry: 36x36 viewBox, bases at rotated squares
+      // 2B=top, 3B=left, 1B=right, home=bottom
+      var off  = '#222';    // base off
+      var dim  = '#333';    // diamond border
+      var hit  = symCol;    // reached base color
+      var run  = '#00c97a'; // scored / home color
+      var hr   = '#f5a623'; // HR color
+
+      var c1 = reached >= 1 ? hit  : off;   // 1B
+      var c2 = reached >= 2 ? hit  : off;   // 2B
+      var c3 = reached >= 3 ? hit  : off;   // 3B
+      var cH = reached >= 4 ? (last==='HR' ? hr : run) : '#1a1a1a'; // home
+
+      // Label: sym text below diamond (abbreviated for space)
+      var lbl = last;
+      if (lbl === 'GDP') lbl = 'DP';
+      if (lbl.length > 3) lbl = lbl.substring(0,3);
+      var lblCol = symCol;
+
+      // Multiple PAs: show count in corner
+      var multiTxt = parts.length > 1
+        ? '<text x="34" y="8" font-size="7" fill="#555" text-anchor="end" font-family="monospace">' + parts.length + 'PA</text>'
+        : '';
+
+      return '<svg viewBox="0 0 36 42" width="36" height="42" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:0 auto;">' +
+        multiTxt +
+        // 2B (top)
+        '<rect x="13" y="1" width="10" height="10" rx="1.5" fill="' + c2 + '" stroke="' + dim + '" stroke-width="1" transform="rotate(45 18 6)"/>' +
+        // 3B (left)
+        '<rect x="1" y="13" width="10" height="10" rx="1.5" fill="' + c3 + '" stroke="' + dim + '" stroke-width="1" transform="rotate(45 6 18)"/>' +
+        // 1B (right)
+        '<rect x="25" y="13" width="10" height="10" rx="1.5" fill="' + c1 + '" stroke="' + dim + '" stroke-width="1" transform="rotate(45 30 18)"/>' +
+        // Home (bottom)
+        '<rect x="13" y="25" width="10" height="10" rx="1.5" fill="' + cH + '" stroke="' + dim + '" stroke-width="1" transform="rotate(45 18 30)"/>' +
+        // Label
+        '<text x="18" y="41" font-size="8" fill="' + lblCol + '" text-anchor="middle" font-family="monospace" font-weight="600">' + lbl + '</text>' +
+        '</svg>';
+    }
 
     var html = '<div style="margin-bottom:20px;">';
     // Team header
@@ -4339,14 +4604,11 @@ function renderScorecard() {
       // Inning cells
       inns.forEach(function(n) {
         var sym = pm[n];
+        // "scored" = player has runs AND this is a hit/reach cell (rough heuristic)
+        // More precise: check if player's total runs > 0 and they reached base this inning
+        var scored = (p.r > 0) && sym && /^(1B|2B|3B|HR|BB|IBB|HBP|E|FC)/.test(sym.split('/').pop());
         if (sym) {
-          var parts = sym.split('/');
-          var cellContent = parts.map(function(s) {
-            var sc = symColor(s);
-            var fw = (s === 'HR' || s === '3B' || s === '2B' || s === '1B') ? '700' : '600';
-            return '<span style="color:' + sc + ';font-weight:' + fw + ';font-size:12px;font-family:monospace;">' + s + '</span>';
-          }).join('<span style="color:#333;font-size:10px;">/</span>');
-          html += '<td ' + td + '>' + cellContent + '</td>';
+          html += '<td ' + td + '>' + baseDiamond(sym, scored) + '</td>';
         } else {
           html += '<td ' + td + '><span style="color:#1e1e1e;font-size:16px;">·</span></td>';
         }
