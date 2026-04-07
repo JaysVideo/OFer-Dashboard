@@ -304,6 +304,39 @@
   .rhe-val.rhe-r { color: #00c97a; }
   .rhe-val.rhe-e { color: #ff8c00; }
   .rhe-lbl  { font-size: 9px; color: #555; letter-spacing: 3px; }
+
+  /* Scorecard cell tooltip */
+  td[data-tip] { position:relative; }
+  td[data-tip]:hover::after {
+    content: attr(data-tip);
+    position:absolute;
+    bottom:calc(100% + 4px);
+    left:50%;transform:translateX(-50%);
+    background:#0d0f14;
+    border:1px solid #333;
+    color:#ccc;
+    font-family:'Share Tech Mono',monospace;
+    font-size:10px;
+    letter-spacing:.3px;
+    line-height:1.6;
+    padding:6px 10px;
+    white-space:pre;
+    z-index:999;
+    pointer-events:none;
+    min-width:180px;
+    max-width:320px;
+    box-shadow:0 4px 16px rgba(0,0,0,.8);
+  }
+  td[data-tip]:hover::before {
+    content:'';
+    position:absolute;
+    bottom:calc(100%);
+    left:50%;transform:translateX(-50%);
+    border:5px solid transparent;
+    border-top-color:#333;
+    z-index:1000;
+    pointer-events:none;
+  }
   /* Order lock toggle button */
   .order-lock-btn {
     background: none; border: 1px solid #2a2a2a; border-radius: 4px;
@@ -4436,6 +4469,16 @@ function renderScorecard() {
       var entry = sym + ':' + tobaseNum + flag;
       map[primaryKey][innNum] = existing ? existing + '/' + entry : entry;
 
+      // Store narrative text for tooltip — strip pitch sequence in parens
+      if (!map.__narr__) map.__narr__ = {};
+      var narrKey = primaryKey + ':' + innNum;
+      var cleanNarr = narrText.replace(/\s*\([^)]*\)/g,'').replace(/\s+/g,' ').trim();
+      if (map.__narr__[narrKey]) {
+        map.__narr__[narrKey] += ' | ' + cleanNarr;
+      } else {
+        map.__narr__[narrKey] = cleanNarr;
+      }
+
       if (!map.__aliases__) map.__aliases__ = {};
       nameKeys(bname).forEach(function(alias) {
         if (alias !== primaryKey) map.__aliases__[alias] = primaryKey;
@@ -4814,13 +4857,26 @@ function renderScorecard() {
       // Pos
       html += '<td ' + tdStat + ' style="border:1px solid #1a1a1a;padding:3px 4px;text-align:center;vertical-align:middle;font-size:12px;font-family:monospace;color:#666;">' + (p.pos||'—') + '</td>';
 
+      // Resolve narrMap for this player
+      var narrLookupKey = '';
+      for (var li3 = 0; li3 < _lookupKeys2.length; li3++) {
+        var _k3 = _lookupKeys2[li3];
+        var _res3 = (_aliases[_k3] || _k3);
+        if (paMap[_res3]) { narrLookupKey = _res3; break; }
+      }
+      var narrMap = paMap.__narr__ || {};
+
       // Inning cells
       inns.forEach(function(n) {
         var sym = pm[n];
+        var narrTip = narrLookupKey ? (narrMap[narrLookupKey + ':' + n] || '') : '';
+        // Escape quotes for HTML attribute
+        var tipAttr = narrTip ? ' data-tip="' + narrTip.replace(/"/g,'&quot;') + '"' : '';
+        var tdStyle = 'style="border:1px solid #1a1a1a;padding:2px;text-align:center;vertical-align:middle;min-width:' + cellW + ';width:' + cellW + ';height:64px;"';
         if (sym) {
-          html += '<td ' + td + '>' + baseDiamond(sym) + '</td>';
+          html += '<td ' + tdStyle + tipAttr + '>' + baseDiamond(sym) + '</td>';
         } else {
-          html += '<td ' + td + '><span style="color:#1e1e1e;font-size:16px;">·</span></td>';
+          html += '<td ' + tdStyle + '><span style="color:#1e1e1e;font-size:16px;">·</span></td>';
         }
       });
 
