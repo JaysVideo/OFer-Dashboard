@@ -4420,6 +4420,23 @@ function renderScorecard() {
 
   // fieldPos is defined globally above renderScorecard
 
+  // Returns full fielding code from narrative location string e.g. "short, ss to 1b" → "6-3"
+  function fieldPosCode(loc) {
+    if (!loc) return '';
+    var l = loc.toLowerCase().trim();
+    // Pattern: "X to Y" — extract both positions
+    var toMatch = l.match(/^(.*?),?\s*([\w\s]+)\s+to\s+([\w\s]+)/);
+    if (toMatch) {
+      var from = fieldPos(toMatch[2].trim());
+      var to   = fieldPos(toMatch[3].trim());
+      if (from && to) return from + '-' + to;
+      if (from) return from;
+    }
+    // Just a position description
+    var p = fieldPos(l.replace(/,.*$/,'').replace(/\s*\(.*$/,'').trim());
+    return p || '';
+  }
+
   function codeToSym(code, narr) {
     var c = (code || '').toUpperCase();
     var n = (narr || '').toLowerCase();
@@ -4443,17 +4460,20 @@ function renderScorecard() {
     }
     if (/singled/.test(n))        return '1B';
     if (/grounded into double play|lined into double play/.test(n)) return 'GDP';
-    if (/infield fly/.test(n))    { var p=fieldPos(n.replace(/.*infield fly\s*(to\s*)?/,'')); return 'IFF'+(p?p:''); }
-    // SAC bunt check BEFORE grounded out
-    if (/grounded out/.test(n) && /\bsac\b|\bbunt\b|sacrifice bunt/.test(n)) return 'SH';
-    if (/grounded out/.test(n))   { var p=fieldPos(n.replace(/.*grounded out\s*(to\s*)?/,'').replace(/,.*$|\..*$/,'')); return 'G'+(p?p:''); }
+    if (/infield fly/.test(n))    { var locIff=n.replace(/.*infield fly\s*(to\s*)?/,'').replace(/\s*\([^)]*\)/,'').trim(); return 'IFF'+(fieldPosCode(locIff)||''); }
+    if (/grounded out/.test(n)) {
+      if (/\bsac\b|\bbunt\b|sacrifice bunt/.test(n)) return 'SH';
+      var loc2 = n.replace(/.*grounded out\s*(to\s*)?/,'').replace(/\s*\([^)]*\)/,'').replace(/;.*$/,'').trim();
+      return 'G' + fieldPosCode(loc2);
+    }
     if (/flied out/.test(n)) {
       if (/sacrifice fly|\bsf\b/.test(n)) return 'SF';
-      var p=fieldPos(n.replace(/.*flied out\s*(to\s*)?/,'').replace(/,.*$|\..*$/,'')); return 'F'+(p?p:'');
+      var loc3 = n.replace(/.*flied out\s*(to\s*)?/,'').replace(/\s*\([^)]*\)/,'').replace(/;.*$|,.*$/,'').trim();
+      return 'F' + fieldPosCode(loc3);
     }
-    if (/fouled out/.test(n))     { var p=fieldPos(n.replace(/.*fouled out\s*(to\s*)?/,'').replace(/,.*$|\..*$/,'')); return 'F'+(p?p:''); }
-    if (/lined out/.test(n))      { var p=fieldPos(n.replace(/.*lined out\s*(to\s*)?/,'').replace(/,.*$|\..*$/,'')); return 'L'+(p?p:''); }
-    if (/popped up/.test(n) || /popped out/.test(n)) { var p=fieldPos(n.replace(/.*popped (up|out)\s*(to\s*)?/,'').replace(/,.*$|\..*$/,'')); return 'P'+(p?p:''); }
+    if (/fouled out/.test(n)) { var loc4=n.replace(/.*fouled out\s*(to\s*)?/,'').replace(/\s*\([^)]*\)/,'').replace(/;.*$|,.*$/,'').trim(); return 'F'+fieldPosCode(loc4); }
+    if (/lined out/.test(n))  { var loc5=n.replace(/.*lined out\s*(to\s*)?/,'').replace(/\s*\([^)]*\)/,'').replace(/;.*$|,.*$/,'').trim(); return 'L'+fieldPosCode(loc5); }
+    if (/popped up/.test(n) || /popped out/.test(n)) { var loc6=n.replace(/.*popped (up|out)\s*(to\s*)?/,'').replace(/\s*\([^)]*\)/,'').replace(/;.*$|,.*$/,'').trim(); return 'P'+fieldPosCode(loc6); }
     if (/fielder.s choice/.test(n))   return 'FC';
     if (/reached.*(error|muffed)/.test(n)) return 'E';
     if (/batter.s interference/.test(n))   return 'KI';
@@ -4473,6 +4493,7 @@ function renderScorecard() {
     if (c === 'FC')   return 'FC';
     if (/^E/.test(c)) return 'E';
     if (c === 'SF' || /^SF/.test(c)) return 'SF';
+    if (c === 'SHE') return 'SHE';
     if (/^SH/.test(c)) return 'SH';
     if (/^G/.test(c)) return 'G';
     if (/^F/.test(c)) return 'F';
@@ -4489,7 +4510,7 @@ function renderScorecard() {
     if (s === 'K' || s === 'KL' || s === 'KI') return '#ff4444';
     if (s === 'GDP')  return '#ff6666';
     if (s === 'BB' || s === 'IBB' || s === 'HBP') return '#888';
-    if (s === 'SF' || s === 'SH')   return '#aaa';
+    if (s === 'SF' || s === 'SH' || s === 'SHE') return '#aaa';
     if (s.charAt(0) === 'E')        return '#ff8c00';
     if (s === 'FC')                 return '#888';
     // Outs — flyout (F), groundout (G), lineout (L), popup (P), IFF
@@ -4581,10 +4602,12 @@ function renderScorecard() {
       if (lbl==='HBP') lbl='HP';
       if (lbl==='IBB') lbl='IW';
       if (lbl==='GRD') lbl='GR';
-      // Shorten fielding codes: G43→G4, F7→F7, L6→L6 (keep 2 chars max)
-      if (/^[GFL]\d/.test(lbl)) lbl = lbl.substring(0,2);
+      if (lbl==='SHE') lbl='SHE';
+      // Keep full fielding codes (G6-3, F7, L6, FC6-4) — truncate only if >5 chars
+      if (lbl.length > 5) lbl = lbl.substring(0,5);
       if (lbl==='KL') lbl='Kl';
 
+      var lblFontSize = lbl.length <= 2 ? 11 : lbl.length <= 3 ? 9 : 7;
       var lblFill = isOut ? '#444' : col;
       var multiMark = parts.length > 1
         ? '<text x="50" y="8" font-size="7" fill="#555" text-anchor="end" font-family="monospace">' + parts.length + 'x</text>'
@@ -4612,7 +4635,7 @@ function renderScorecard() {
         diamond(40, 30, s, c1, brd) +   // 1B
         diamond(26, 44, s, cH, brd) +   // Home
         // Label centered in diamond
-        '<text x="26" y="30" font-size="10" fill="'+lblFill+'" text-anchor="middle" dominant-baseline="central" font-family="\'Oswald\',sans-serif" font-weight="700">'+lbl+'</text>' +
+        '<text x="26" y="30" font-size="'+lblFontSize+'" fill="'+lblFill+'" text-anchor="middle" dominant-baseline="central" font-family="\'Oswald\',sans-serif" font-weight="700">'+lbl+'</text>' +
         // Scored indicator dot
         (sc && sym!=='HR' ? '<circle cx="26" cy="56" r="2.5" fill="#00c97a"/>' : '') +
         '</svg>';
