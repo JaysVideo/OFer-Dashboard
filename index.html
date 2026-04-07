@@ -4316,11 +4316,44 @@ function renderScorecard() {
         var key = innNum + ':' + rname;
         var cur = runnerMax[key] || { mb: 0, scored: false };
 
-        // result=O or DP: runner was put out — only update if entry already exists
-        // (don't create a new entry that would shadow bEl.tobase fallback)
+        // result=O or DP: runner was put out — mark as out (mb=0)
         if (res === 'O' || res === 'DP') {
-          if (runnerMax[key]) runnerMax[key] = cur; // preserve existing, don't create
+          runnerMax[key] = { mb: 0, scored: false, out: true };
           return;
+        }
+
+        // Detect inning-ending play: outs_before=2 AND this play has an out recorded
+        // Any result=L runner advancement on an inning-ending play didn't actually happen
+        var outsBefore = parseInt(play.getAttribute('outs') || '0');
+        var playHasOut = play.querySelector('runner[result="O"], runner[result="DP"]') !== null;
+        var inningEnder = outsBefore === 2 && playHasOut;
+
+        // result=L (left on base): only advance tobase if narrative explicitly
+        // mentions this runner advancing. StatBroadcast sometimes auto-fills
+        // tobase for LOB runners without real movement (e.g. Luyben Inn3).
+        // Also suppress on inning-ending plays — runner never physically moved.
+        // Exception: if this runner IS the batter of this play, always accept.
+        if (res === 'L' && tb && tb !== '') {
+          var playBatter = (play.getAttribute('batter') || '').toLowerCase().trim();
+          var isBatter = playBatter === rname ||
+            playBatter.split(',')[0] === rname.split(',')[0];
+          if (!isBatter) {
+            // Suppress advancement on inning-ending play
+            if (inningEnder) {
+              runnerMax[key] = cur;
+              return;
+            }
+            var playNarr = play.querySelector('narrative');
+            var playNarrTxt = playNarr ? (playNarr.getAttribute('text') || '').toLowerCase() : '';
+            var rnLast = rname.split(',')[0].trim();
+            var rnPos = playNarrTxt.indexOf(rnLast);
+            var mentionsAdvance = rnPos > -1 &&
+              /advanced|scored|stole/.test(playNarrTxt.slice(rnPos + rnLast.length));
+            if (!mentionsAdvance) {
+              runnerMax[key] = cur;
+              return;
+            }
+          }
         }
 
         // result=L (left on base) or result=S (stayed): use tobase if present,
@@ -4380,23 +4413,27 @@ function renderScorecard() {
       if (rmEntry) {
         tobaseNum = rmEntry.mb;
         scored    = rmEntry.scored;
-        // If runner_max has mb=0 (e.g. result=L with empty tobase), use bEl.tobase as floor
-        if (tobaseNum === 0 && bEl) {
+        // If runner_max has mb=0 but NOT because they were put out (e.g. result=L
+        // with empty tobase), use bEl.tobase as floor
+        if (tobaseNum === 0 && !rmEntry.out && bEl) {
           var bTobase = parseInt(bEl.getAttribute('tobase') || '0');
           if (bTobase > 0) tobaseNum = bTobase;
         }
       } else if (bEl) {
-        // No runner elements at all — use batter tobase directly
         tobaseNum = parseInt(bEl.getAttribute('tobase') || '0');
       }
 
       // HR always scores
       if (sym === 'HR') { scored = true; tobaseNum = 4; }
 
+      // Determine if runner was put out on bases (has entry with out:true)
+      var outOnBases = rmEntry && rmEntry.out === true;
+
       var primaryKey = bnameLower;
       if (!map[primaryKey]) map[primaryKey] = {};
       var existing = map[primaryKey][innNum];
-      var entry = sym + ':' + tobaseNum + (scored ? 's' : '');
+      var flag = scored ? 's' : (outOnBases ? 'x' : '');
+      var entry = sym + ':' + tobaseNum + flag;
       map[primaryKey][innNum] = existing ? existing + '/' + entry : entry;
 
       if (!map.__aliases__) map.__aliases__ = {};
@@ -4618,21 +4655,24 @@ function renderScorecard() {
     var tdName = 'style="border:1px solid #1a1a1a;padding:4px 10px;text-align:left;vertical-align:middle;' +
                  'font-size:13px;font-family:monospace;white-space:nowrap;"';
 
-    // Parse stored "SYM:maxBase[s]" or legacy "SYM"
+    // Parse stored "SYM:maxBase[s|x]" or legacy "SYM"
+    // s = scored, x = out on bases (was moving when put out)
     function parseEntry(e) {
-      var m = e.match(/^([^:]+):(\d+)(s?)$/);
-      if (m) return { sym:m[1], mb:parseInt(m[2]), scored:m[3]==='s' };
+      var m = e.match(/^([^:]+):(\d+)(s|x?)$/);
+      if (m) return { sym:m[1], mb:parseInt(m[2]), scored:m[3]==='s', outOnBases:m[3]==='x' };
       var sym=e, mb=0;
       if (sym==='HR') mb=4;
       else if (sym==='3B') mb=3;
       else if (sym==='2B') mb=2;
       else if (sym==='1B'||sym==='BB'||sym==='IBB'||sym==='HBP'||sym==='E'||sym==='FC') mb=1;
-      return { sym:sym, mb:mb, scored:sym==='HR' };
+      return { sym:sym, mb:mb, scored:sym==='HR', outOnBases:false };
     }
 
-    // Diamond SVG: 4 rotated squares as base paths, label centered
-    // viewBox 52×60. Diamond center at (26,30). Each base is a rotated square.
-    // Base positions (center points): 1B=right(40,30) 2B=top(26,16) 3B=left(12,30) H=bottom(26,44)
+    // Diamond SVG: base path lines showing advancement, label centered
+    // Base positions: H=bottom(26,44) 1B=right(40,30) 2B=top(26,16) 3B=left(12,30)
+    // Path order: H→1B→2B→3B→H
+    // mb=0: out (no lines lit), mb=1: H→1B, mb=2: H→1B→2B, mb=3: H→1B→2B→3B, mb=4: full circuit
+    // out=true with mb>0: partial line to midpoint of next segment (runner cut down)
     function baseDiamond(entryStr) {
       if (!entryStr) return '<span style="color:#222;font-size:18px;">·</span>';
 
@@ -4641,16 +4681,72 @@ function renderScorecard() {
       var sym   = p.sym;
       var mb    = p.mb;
       var sc    = p.scored;
-      var isOut = mb === 0;
-      var col   = symColor(sym);   // used for label color only
-      var reach = '#00c97a';       // green for any reached base
-      var off   = '#1e1e1e';
-      var brd   = '#3a3a3a';
+      var oob   = p.outOnBases;  // out on bases — draw half-segment to next base
+      var isOut = mb === 0 && !oob;
+      var col   = symColor(sym);
+      var reach = '#00c97a';
+      var dim   = '#252525';
+      var brd   = '#2a2a2a';
 
-      var c1 = mb >= 1 ? reach : off;
-      var c2 = mb >= 2 ? reach : off;
-      var c3 = mb >= 3 ? reach : off;
-      var cH = sc ? '#00c97a' : (sym==='HR' ? '#f5a623' : off);
+      // Base coords
+      var H  = [26,44], B1 = [40,30], B2 = [26,16], B3 = [12,30];
+      // Segment midpoints (for "cut down" halfway indicator)
+      var mH1 = [33,37], m12 = [33,23], m23 = [19,23], m3H = [19,37];
+
+      // Segments in path order: H→1B, 1B→2B, 2B→3B, 3B→H
+      var segs = [
+        [H,  B1, mH1],
+        [B1, B2, m12],
+        [B2, B3, m23],
+        [B3, H,  m3H],
+      ];
+
+      // Determine which segments to draw lit vs dim
+      // mb tells us full segments completed; scored means closed the circuit
+      var litSegs   = sc ? 4 : mb;   // number of full segments lit
+      var svg = '<svg viewBox="0 0 52 60" width="52" height="60" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:0 auto;">';
+
+      // Multi-PA indicator
+      if (parts.length > 1) {
+        svg += '<text x="50" y="8" font-size="7" fill="#555" text-anchor="end" font-family="monospace">'+parts.length+'x</text>';
+      }
+
+      // Draw all 4 dim base lines first (background)
+      for (var i=0; i<4; i++) {
+        var s0=segs[i][0], s1=segs[i][1];
+        svg += '<line x1="'+s0[0]+'" y1="'+s0[1]+'" x2="'+s1[0]+'" y2="'+s1[1]+'" stroke="'+dim+'" stroke-width="2.5" stroke-linecap="round"/>';
+      }
+
+      // Draw small dim squares at each base corner
+      var bases = [B1, B2, B3, H];
+      for (var b=0; b<4; b++) {
+        var bx=bases[b][0], by=bases[b][1], bs=3.5;
+        svg += '<polygon points="'+bx+','+(by-bs)+' '+(bx+bs)+','+by+' '+bx+','+(by+bs)+' '+(bx-bs)+','+by+'" fill="'+brd+'" stroke="none"/>';
+      }
+
+      // Draw lit segments
+      for (var j=0; j<litSegs && j<4; j++) {
+        var ls=segs[j][0], le=segs[j][1];
+        svg += '<line x1="'+ls[0]+'" y1="'+ls[1]+'" x2="'+le[0]+'" y2="'+le[1]+'" stroke="'+reach+'" stroke-width="2.5" stroke-linecap="round"/>';
+        // Lit base square at destination
+        var lbx=le[0], lby=le[1], lbs=3.5;
+        var bCol = (j===3 && sc) ? (sym==='HR' ? '#f5a623' : reach) : reach;
+        svg += '<polygon points="'+lbx+','+(lby-lbs)+' '+(lbx+lbs)+','+lby+' '+lbx+','+(lby+lbs)+' '+(lbx-lbs)+','+lby+'" fill="'+bCol+'" stroke="none"/>';
+      }
+
+      // Half-segment: out on bases — draw halfway toward next base in orange/red
+      if (oob && litSegs < 4) {
+        var nextSeg = segs[litSegs];
+        var hs0 = nextSeg[0], hsMid = nextSeg[2];
+        svg += '<line x1="'+hs0[0]+'" y1="'+hs0[1]+'" x2="'+hsMid[0]+'" y2="'+hsMid[1]+'" stroke="#ff6b35" stroke-width="2" stroke-linecap="round" stroke-dasharray="2,2"/>';
+        // X mark at the midpoint
+        var xr=2.5;
+        svg += '<line x1="'+(hsMid[0]-xr)+'" y1="'+(hsMid[1]-xr)+'" x2="'+(hsMid[0]+xr)+'" y2="'+(hsMid[1]+xr)+'" stroke="#ff4444" stroke-width="1.5"/>';
+        svg += '<line x1="'+(hsMid[0]+xr)+'" y1="'+(hsMid[1]-xr)+'" x2="'+(hsMid[0]-xr)+'" y2="'+(hsMid[1]+xr)+'" stroke="#ff4444" stroke-width="1.5"/>';
+      }
+
+      // Starting base (home plate origin) — always draw small marker at H
+      svg += '<polygon points="26,'+(44-3.5)+' '+(26+3.5)+',44 26,'+(44+3.5)+' '+(26-3.5)+',44" fill="'+(litSegs>0?reach:brd)+'" stroke="none"/>';
 
       // Short label
       var lbl = sym;
@@ -4659,42 +4755,14 @@ function renderScorecard() {
       if (lbl==='IBB') lbl='IW';
       if (lbl==='GRD') lbl='GR';
       if (lbl==='SHE') lbl='SHE';
-      // Keep full fielding codes (G6-3, F7, L6, FC6-4) — truncate only if >5 chars
       if (lbl.length > 5) lbl = lbl.substring(0,5);
       if (lbl==='KL') lbl='Kl';
-
       var lblFontSize = lbl.length <= 2 ? 11 : lbl.length <= 3 ? 9 : 7;
-      var lblFill = isOut ? '#444' : col;
-      var multiMark = parts.length > 1
-        ? '<text x="50" y="8" font-size="7" fill="#555" text-anchor="end" font-family="monospace">' + parts.length + 'x</text>'
-        : '';
+      var lblFill = isOut ? '#3a3a3a' : col;
 
-      // Each base: rotated square polygon. Points = center ± offset at 45°
-      // diamond(cx,cy,s) = rotated square with half-diagonal s
-      function diamond(cx, cy, s, fill, stroke) {
-        var pts = (cx)+','+(cy-s)+' '+(cx+s)+','+(cy)+' '+(cx)+','+(cy+s)+' '+(cx-s)+','+(cy);
-        return '<polygon points="'+pts+'" fill="'+fill+'" stroke="'+stroke+'" stroke-width="1.2"/>';
-      }
-
-      var cx=26, s=8; // center x, base half-size
-
-      return '<svg viewBox="0 0 52 60" width="52" height="60" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:0 auto;">' +
-        multiMark +
-        // Base path lines (thin connectors between bases)
-        '<line x1="26" y1="16" x2="40" y2="30" stroke="#2a2a2a" stroke-width="1"/>' +
-        '<line x1="40" y1="30" x2="26" y2="44" stroke="#2a2a2a" stroke-width="1"/>' +
-        '<line x1="26" y1="44" x2="12" y2="30" stroke="#2a2a2a" stroke-width="1"/>' +
-        '<line x1="12" y1="30" x2="26" y2="16" stroke="#2a2a2a" stroke-width="1"/>' +
-        // Bases: 2B top, 3B left, 1B right, H bottom
-        diamond(26, 16, s, c2, brd) +   // 2B
-        diamond(12, 30, s, c3, brd) +   // 3B
-        diamond(40, 30, s, c1, brd) +   // 1B
-        diamond(26, 44, s, cH, brd) +   // Home
-        // Label centered in diamond
-        '<text x="26" y="30" font-size="'+lblFontSize+'" fill="'+lblFill+'" text-anchor="middle" dominant-baseline="central" font-family="\'Oswald\',sans-serif" font-weight="700">'+lbl+'</text>' +
-        // Scored indicator dot
-        (sc && sym!=='HR' ? '<circle cx="26" cy="56" r="2.5" fill="#00c97a"/>' : '') +
-        '</svg>';
+      svg += '<text x="26" y="30" font-size="'+lblFontSize+'" fill="'+lblFill+'" text-anchor="middle" dominant-baseline="central" font-family="\'Oswald\',sans-serif" font-weight="700">'+lbl+'</text>';
+      svg += '</svg>';
+      return svg;
     }
 
     var html = '<div style="margin-bottom:20px;">';
