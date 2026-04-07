@@ -4420,21 +4420,63 @@ function renderScorecard() {
 
   // fieldPos is defined globally above renderScorecard
 
-  // Returns full fielding code from narrative location string e.g. "short, ss to 1b" → "6-3"
-  function fieldPosCode(loc) {
+  // Returns fielding position number from a location string
+  function fieldPosNum(s) {
+    if (!s) return '';
+    var l = (s || '').toLowerCase().trim();
+    // Explicit ordered map — check longest keys first
+    var pm = [
+      ['first base','3'],['second base','4'],['third base','5'],
+      ['shortstop','6'],['left field','7'],['center field','8'],['right field','9'],
+      ['pitcher','1'],['catcher','2'],
+      ['first','3'],['second','4'],['third','5'],
+      ['short','6'],['ss','6'],
+      ['lf','7'],['cf','8'],['rf','9'],
+      ['1b','3'],['2b','4'],['3b','5'],
+      ['p','1'],['c','2'],
+    ];
+    for (var i=0; i<pm.length; i++) {
+      if (l.startsWith(pm[i][0]) || l === pm[i][0]) return pm[i][1];
+    }
+    return '';
+  }
+
+  // Returns full fielding code: "G6-3", "F7", "L7", "FC6-4" etc.
+  function fieldPosCode(loc, type) {
     if (!loc) return '';
     var l = loc.toLowerCase().trim();
-    // Pattern: "X to Y" — extract both positions
-    var toMatch = l.match(/^(.*?),?\s*([\w\s]+)\s+to\s+([\w\s]+)/);
-    if (toMatch) {
-      var from = fieldPos(toMatch[2].trim());
-      var to   = fieldPos(toMatch[3].trim());
-      if (from && to) return from + '-' + to;
-      if (from) return from;
+    // Strip pitch count parens and trailing punctuation
+    l = l.replace(/\s*\([^)]*\)/g,'').replace(/[.!?]$/,'').trim();
+    // Split on semicolons — only use first segment for the batter's play
+    l = l.split(';')[0].trim();
+
+    if (type === 'fc') {
+      // "hit to short" → initial fielder; find "out at X, A to B" for the relay
+      var fi = fieldPosNum(l.replace(/,.*$/,'').trim());
+      var outM = loc.toLowerCase().match(/out at \w+(?:\s+\w+)?,\s*(\w+)\s+to\s+(\w+)/);
+      if (outM) {
+        var ot = fieldPosNum(outM[2]);
+        return fi + (ot ? '-' + ot : '');
+      }
+      return fi;
     }
-    // Just a position description
-    var p = fieldPos(l.replace(/,.*$/,'').replace(/\s*\(.*$/,'').trim());
-    return p || '';
+
+    // For flied/grounded/lined/popped: check for "putout by X" first
+    var putM = l.match(/putout by\s+(\w+)/);
+    if (putM) return fieldPosNum(putM[1]);
+
+    // Check for relay throw "X to Y" at end (after comma)
+    // e.g. "second base, 2b to 1b" → "2b to 1b" → 4-3
+    var relayM = l.match(/,\s*([a-z0-9]+(?:\s+[a-z0-9]+)?)\s+to\s+([a-z0-9]+(?:\s+[a-z0-9]+)?)\s*$/);
+    if (relayM) {
+      var from = fieldPosNum(relayM[1].trim());
+      var to   = fieldPosNum(relayM[2].trim());
+      if (from && to) return from + '-' + to;
+    }
+
+    // Just the first fielder before any comma
+    var simple = l.replace(/,.*$/,'').trim();
+    return fieldPosNum(simple);
   }
 
   function codeToSym(code, narr) {
@@ -4460,21 +4502,21 @@ function renderScorecard() {
     }
     if (/singled/.test(n))        return '1B';
     if (/grounded into double play|lined into double play/.test(n)) return 'GDP';
-    if (/infield fly/.test(n))    { var locIff=n.replace(/.*infield fly\s*(to\s*)?/,'').replace(/\s*\([^)]*\)/,'').trim(); return 'IFF'+(fieldPosCode(locIff)||''); }
+    if (/infield fly/.test(n))    { var locIff=n.replace(/.*infield fly\s+to\s+/,'').replace(/\s*\([^)]*\)/g,'').split(';')[0].trim(); return 'IFF'+(fieldPosCode(locIff)||''); }
     if (/grounded out/.test(n)) {
       if (/\bsac\b|\bbunt\b|sacrifice bunt/.test(n)) return 'SH';
-      var loc2 = n.replace(/.*grounded out\s*(to\s*)?/,'').replace(/\s*\([^)]*\)/,'').replace(/;.*$/,'').trim();
+      var loc2 = n.replace(/.*grounded out\s+to\s+/,'').replace(/\s*\([^)]*\)/g,'').split(';')[0].trim();
       return 'G' + fieldPosCode(loc2);
     }
     if (/flied out/.test(n)) {
       if (/sacrifice fly|\bsf\b/.test(n)) return 'SF';
-      var loc3 = n.replace(/.*flied out\s*(to\s*)?/,'').replace(/\s*\([^)]*\)/,'').replace(/;.*$|,.*$/,'').trim();
+      var loc3 = n.replace(/.*flied out\s+to\s+/,'').replace(/\s*\([^)]*\)/g,'').split(';')[0].trim();
       return 'F' + fieldPosCode(loc3);
     }
-    if (/fouled out/.test(n)) { var loc4=n.replace(/.*fouled out\s*(to\s*)?/,'').replace(/\s*\([^)]*\)/,'').replace(/;.*$|,.*$/,'').trim(); return 'F'+fieldPosCode(loc4); }
-    if (/lined out/.test(n))  { var loc5=n.replace(/.*lined out\s*(to\s*)?/,'').replace(/\s*\([^)]*\)/,'').replace(/;.*$|,.*$/,'').trim(); return 'L'+fieldPosCode(loc5); }
-    if (/popped up/.test(n) || /popped out/.test(n)) { var loc6=n.replace(/.*popped (up|out)\s*(to\s*)?/,'').replace(/\s*\([^)]*\)/,'').replace(/;.*$|,.*$/,'').trim(); return 'P'+fieldPosCode(loc6); }
-    if (/fielder.s choice/.test(n))   return 'FC';
+    if (/fouled out/.test(n)) { var loc4=n.replace(/.*fouled out\s+to\s+/,'').replace(/\s*\([^)]*\)/g,'').split(';')[0].trim(); return 'F'+fieldPosCode(loc4); }
+    if (/lined out/.test(n))  { var loc5=n.replace(/.*lined out\s+to\s+/,'').replace(/\s*\([^)]*\)/g,'').split(';')[0].trim(); return 'L'+fieldPosCode(loc5); }
+    if (/popped up/.test(n) || /popped out/.test(n)) { var loc6=n.replace(/.*popped (?:up|out)\s+to\s+/,'').replace(/\s*\([^)]*\)/g,'').split(';')[0].trim(); return 'P'+fieldPosCode(loc6); }
+    if (/fielder.s choice/.test(n)) { var loc7=n.replace(/.*fielder.s choice\s+(?:hit\s+)?to\s+/,'').replace(/\s*\([^)]*\)/g,'').trim(); return 'FC'+fieldPosCode(loc7,'fc'); }
     if (/reached.*(error|muffed)/.test(n)) return 'E';
     if (/batter.s interference/.test(n))   return 'KI';
     if (/sacrifice bunt|sac bunt/.test(n)) return 'SH';
