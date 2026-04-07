@@ -4292,6 +4292,44 @@ function renderScorecard() {
   function buildPaMap(vh) {
     var map = {};
 
+    // ── PASS 1: Pre-scan ALL runner elements to find each player's max base per inning ──
+    // Runner advancement happens on LATER plays (e.g. French doubles in Inn4,
+    // then scores on a wild pitch play attributed to the NEXT batter).
+    // We must scan all runner elements across the entire inning first.
+    var runnerMax = {}; // key: "innNum:nameLower" → { mb: 0-4, scored: bool }
+
+    xml.querySelectorAll('play').forEach(function(play) {
+      var bat = play.parentElement || play.parentNode;
+      if (!bat || bat.tagName.toLowerCase() !== 'batting') return;
+      if (bat.getAttribute('vh') !== vh) return;
+      var inn = bat.parentElement || bat.parentNode;
+      if (!inn || inn.tagName.toLowerCase() !== 'inning') return;
+      var innNum = parseInt(inn.getAttribute('number') || '0');
+      if (!innNum) return;
+
+      play.querySelectorAll('runner').forEach(function(r) {
+        var rname = (r.getAttribute('name') || '').toLowerCase().trim();
+        if (!rname) return;
+        var tb = (r.getAttribute('tobase') || '').toUpperCase();
+        var sc = r.getAttribute('scored') === '1';
+        var res = (r.getAttribute('result') || '').toUpperCase();
+        var key = innNum + ':' + rname;
+        var cur = runnerMax[key] || { mb: 0, scored: false };
+
+        // result=O means out on bases — don't advance
+        if (res === 'O' || res === 'DP') { runnerMax[key] = cur; return; }
+
+        var mb = cur.mb;
+        if (sc || tb === 'HP') { mb = 4; cur.scored = true; }
+        else if (tb === '3B' && mb < 3) mb = 3;
+        else if (tb === '2B' && mb < 2) mb = 2;
+        else if (tb === '1B' && mb < 1) mb = 1;
+        cur.mb = mb;
+        runnerMax[key] = cur;
+      });
+    });
+
+    // ── PASS 2: Record each plate appearance with max base from runnerMax ────
     function recordPlay(bname, innNum, narrText, bEl, playEl) {
       if (!bname || !innNum) return;
       var action = '';
@@ -4322,33 +4360,29 @@ function renderScorecard() {
       var sym = codeToSym(action, narrText);
       if (!sym) return;
 
-      // ── Max base reached ─────────────────────────────────────────────────
-      // Start from tobase on the batter element (where they initially landed)
-      var tobaseNum = bEl ? parseInt(bEl.getAttribute('tobase') || '0') : 0;
-      var scored = false;
+      // ── Max base: use pre-scanned runnerMax first, fall back to batter tobase ──
+      var bnameLower = bname.toLowerCase().trim();
+      var rkey = innNum + ':' + bnameLower;
+      var rmEntry = runnerMax[rkey];
 
-      // Walk runner elements in the same play to find furthest advancement
-      // <runner tobase="1B|2B|3B|HP" scored="1"> tracks subsequent movement
-      if (playEl) {
-        playEl.querySelectorAll('runner').forEach(function(r) {
-          // Only count this runner if their name matches the batter
-          var rname = r.getAttribute('name') || '';
-          if (rname && rname.toLowerCase() !== bname.toLowerCase()) return;
-          var tb = (r.getAttribute('tobase') || '').toUpperCase();
-          var rScored = r.getAttribute('scored') === '1';
-          if (rScored || tb === 'HP') { scored = true; tobaseNum = 4; }
-          else if (tb === '3B' && tobaseNum < 3) tobaseNum = 3;
-          else if (tb === '2B' && tobaseNum < 2) tobaseNum = 2;
-          else if (tb === '1B' && tobaseNum < 1) tobaseNum = 1;
-        });
+      var tobaseNum = 0;
+      var scored    = false;
+
+      if (rmEntry) {
+        // Pre-scanned runner data covers all advancement in the inning
+        tobaseNum = rmEntry.mb;
+        scored    = rmEntry.scored;
+      } else if (bEl) {
+        // No runner elements found — use batter tobase as initial position
+        tobaseNum = parseInt(bEl.getAttribute('tobase') || '0');
       }
+
       // HR always scores
       if (sym === 'HR') { scored = true; tobaseNum = 4; }
 
-      var primaryKey = bname.toLowerCase().trim();
+      var primaryKey = bnameLower;
       if (!map[primaryKey]) map[primaryKey] = {};
       var existing = map[primaryKey][innNum];
-      // Store as "SYM:maxBase" — e.g. "2B:3" means doubled, advanced to 3rd
       var entry = sym + ':' + tobaseNum + (scored ? 's' : '');
       map[primaryKey][innNum] = existing ? existing + '/' + entry : entry;
 
