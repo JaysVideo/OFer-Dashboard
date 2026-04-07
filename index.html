@@ -4316,15 +4316,24 @@ function renderScorecard() {
         var key = innNum + ':' + rname;
         var cur = runnerMax[key] || { mb: 0, scored: false };
 
-        // result=O means out on bases — don't advance
-        if (res === 'O' || res === 'DP') { runnerMax[key] = cur; return; }
+        // result=O or DP: runner was put out — only update if entry already exists
+        // (don't create a new entry that would shadow bEl.tobase fallback)
+        if (res === 'O' || res === 'DP') {
+          if (runnerMax[key]) runnerMax[key] = cur; // preserve existing, don't create
+          return;
+        }
 
+        // result=L (left on base) or result=S (stayed): use tobase if present,
+        // otherwise don't downgrade an existing value
         var mb = cur.mb;
         if (sc || tb === 'HP') { mb = 4; cur.scored = true; }
         else if (tb === '3B' && mb < 3) mb = 3;
         else if (tb === '2B' && mb < 2) mb = 2;
         else if (tb === '1B' && mb < 1) mb = 1;
+        // result=L with empty tobase — mark as LOB so Pass 2 knows runner existed
+        // but don't change mb (runner's last known base is preserved)
         cur.mb = mb;
+        cur.lob = (res === 'L' || res === 'S');  // flag: left on base or stayed
         runnerMax[key] = cur;
       });
     });
@@ -4369,11 +4378,15 @@ function renderScorecard() {
       var scored    = false;
 
       if (rmEntry) {
-        // Pre-scanned runner data covers all advancement in the inning
         tobaseNum = rmEntry.mb;
         scored    = rmEntry.scored;
+        // If runner_max has mb=0 (e.g. result=L with empty tobase), use bEl.tobase as floor
+        if (tobaseNum === 0 && bEl) {
+          var bTobase = parseInt(bEl.getAttribute('tobase') || '0');
+          if (bTobase > 0) tobaseNum = bTobase;
+        }
       } else if (bEl) {
-        // No runner elements found — use batter tobase as initial position
+        // No runner elements at all — use batter tobase directly
         tobaseNum = parseInt(bEl.getAttribute('tobase') || '0');
       }
 
@@ -4629,13 +4642,14 @@ function renderScorecard() {
       var mb    = p.mb;
       var sc    = p.scored;
       var isOut = mb === 0;
-      var col   = symColor(sym);
+      var col   = symColor(sym);   // used for label color only
+      var reach = '#00c97a';       // green for any reached base
       var off   = '#1e1e1e';
       var brd   = '#3a3a3a';
 
-      var c1 = mb >= 1 ? col  : off;
-      var c2 = mb >= 2 ? col  : off;
-      var c3 = mb >= 3 ? col  : off;
+      var c1 = mb >= 1 ? reach : off;
+      var c2 = mb >= 2 ? reach : off;
+      var c3 = mb >= 3 ? reach : off;
       var cH = sc ? '#00c97a' : (sym==='HR' ? '#f5a623' : off);
 
       // Short label
