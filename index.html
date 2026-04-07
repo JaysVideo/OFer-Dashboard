@@ -4745,8 +4745,11 @@ function renderScorecard() {
       ];
 
       // Determine which segments to draw lit vs dim
-      // mb tells us full segments completed; scored means closed the circuit
-      var litSegs   = sc ? 4 : mb;   // number of full segments lit
+      // For oob (out on bases): the runner reached 'mb' bases fully, THEN was put out
+      // mid-way to the next base. If mb=0 but oob=true, they at minimum reached 1B
+      // (otherwise they'd be a strikeout, not an oob out).
+      var fullBase = oob ? Math.max(mb, 1) : mb;  // bases fully reached before out
+      var litSegs  = sc ? 4 : fullBase;            // number of full segments lit
       var svg = '<svg viewBox="0 0 52 60" width="52" height="60" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:0 auto;">';
 
       // Multi-PA indicator
@@ -4777,9 +4780,10 @@ function renderScorecard() {
         svg += '<polygon points="'+lbx+','+(lby-lbs)+' '+(lbx+lbs)+','+lby+' '+lbx+','+(lby+lbs)+' '+(lbx-lbs)+','+lby+'" fill="'+bCol+'" stroke="none"/>';
       }
 
-      // Half-segment: out on bases — draw halfway toward next base in orange/red
-      if (oob && litSegs < 4) {
-        var nextSeg = segs[litSegs];
+      // Half-segment: out on bases — draw halfway toward next base in dashed orange
+      // The runner reached fullBase safely, then was cut down going to fullBase+1
+      if (oob && fullBase < 4) {
+        var nextSeg = segs[fullBase];
         var hs0 = nextSeg[0], hsMid = nextSeg[2];
         svg += '<line x1="'+hs0[0]+'" y1="'+hs0[1]+'" x2="'+hsMid[0]+'" y2="'+hsMid[1]+'" stroke="#ff6b35" stroke-width="2" stroke-linecap="round" stroke-dasharray="2,2"/>';
         // X mark at the midpoint
