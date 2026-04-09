@@ -3106,7 +3106,7 @@ function renderRoster(elId, side, players, curBtr, isThisBatting, animate=false,
     const manualKey = 'manual_' + side + '_' + p.uni;
     const manualVal = window._manualOverrides?.[manualKey] || '';
     const rawCopy   = detailPart || (ofer.text && ofer.text !== '—' ? '(' + ofer.text.toUpperCase() + ')' : '');
-    const copyVal   = (manualVal || rawCopy).replace(/'/g, "&#39;").replace(/"/g, "&quot;");
+    const copyVal   = (manualVal || rawCopy).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
     const spotLbl   = (p.spot >= 1 && p.spot <= 9)
       ? '<span class="batting-spot-lbl">BATTING: ' + spotOrdinal(p.spot) + '</span>' : '';
     return '<div class="pcard" style="opacity:0.7;">'
@@ -3153,7 +3153,7 @@ function renderRoster(elId, side, players, curBtr, isThisBatting, animate=false,
     const _parenIdx = ofer.text.indexOf('(');
     const _copyText = (_parenIdx > -1 ? ofer.text.substring(_parenIdx)
                     : (ofer.text && ofer.text !== '—' ? '(' + ofer.text + ')' : '')).toUpperCase();
-    const safe    = _copyText.replace(/'/g,"&#39;").replace(/"/g,"&quot;");
+    const safe    = _copyText.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
     const cardCls = isCur ? ' at-bat' : '';
 
     const hdrRight = qLabel
@@ -3298,7 +3298,7 @@ function renderRoster(elId, side, players, curBtr, isThisBatting, animate=false,
           const _ai = ofer.text.indexOf('(');
           const _ac = (_ai > -1 ? ofer.text.substring(_ai)
                     : (ofer.text && ofer.text !== '—' ? '(' + ofer.text + ')' : '')).toUpperCase();
-          const safe = _ac.replace(/'/g,"&#39;").replace(/"/g,"&quot;");
+          const safe = _ac.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
           const oferLabel = ofer.cls === 'emp' ? '' :
             `<div class="acc-ofer ${ofer.cls}">${gameLabel}: ${ofer.text.toUpperCase()}</div>`;
           return `<div class="acc-card">
@@ -3963,8 +3963,9 @@ function copyAllStatLines() {
     const btn  = card.querySelector('.copy-btn');
     if (!btn) return;
     const onclick = btn.getAttribute('onclick') || '';
-    const match = onclick.match(/copyIt\(this,'([^']*)'\)/);
-    const stat = manualVal || (match ? match[1].replace(/&#39;/g,"'") : '');
+    // Match content inside copyIt(this,'...') — handle escaped apostrophes (\')
+    const match = onclick.match(/copyIt\(this,'((?:[^'\\]|\\.)*)'\)/);
+    const stat = manualVal || (match ? match[1].replace(/\\'/g,"'").replace(/&#39;/g,"'") : '');
     if (stat && stat !== '—') lines.push('#' + uni + ' ' + name + ' — ' + stat);
   });
   if (!lines.length) return;
