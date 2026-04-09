@@ -2299,6 +2299,8 @@ async function readXML() {
 // XML PARSING
 // ════════════════════════════════════════════════════════════════════════════
 function parseGame(xmlText) {
+  // Reset per-game maps so stale data from previous refreshes doesn't accumulate
+  window._hrRbiMap = {};
   try {
     const xml = new DOMParser().parseFromString(xmlText, 'text/xml');
     if (xml.querySelector('parsererror')) throw new Error('XML parse error');
@@ -2416,11 +2418,20 @@ function parseGame(xmlText) {
           isRoe: roeEl === '1',
           paRbi
         };
-        // hrRbiMap: persist HR per-PA RBI separately (survives subsequent PAs)
-        if ((action === 'HR' || decision === 'HR') && bEl) {
+        // hrRbiMap: persist HR per-PA RBI as an array (survives subsequent PAs)
+        // Handles both Format A (bEl) and Format B (narrative-only)
+        if (action === 'HR' || decision === 'HR') {
           window._hrRbiMap = window._hrRbiMap || {};
+          let hrRbiVal = paRbi; // Format A: from batter element
+          if (!bEl && narrText) {
+            // Format B: parse RBI count from narrative text
+            const hrRbiMatch = narrText.match(/(\d+)\s+rbi/i);
+            hrRbiVal = hrRbiMatch ? parseInt(hrRbiMatch[1]) : (/\brbi\b/i.test(narrText) ? 1 : 1);
+          }
           nameKeys(bName).forEach(function(k) {
-            window._hrRbiMap[k] = paRbi;
+            const arr = window._hrRbiMap[k] || [];
+            arr.push(hrRbiVal);
+            window._hrRbiMap[k] = arr;
           });
         }
       }
@@ -3343,9 +3354,11 @@ function buildOfer(p) {
     if (hr > 0) {
       if (hr === 1) {
         const _hrKeys = nameKeys(p.short || p.name || '');
-        const _hrRbi  = window._hrRbiMap
+        const _hrArr  = window._hrRbiMap
           ? _hrKeys.reduce((found, k) => found != null ? found : window._hrRbiMap[k], null)
           : null;
+        // Use the last HR's RBI (most recent)
+        const _hrRbi = Array.isArray(_hrArr) ? _hrArr[_hrArr.length - 1] : _hrArr;
         if (_hrRbi != null) {
           parts.push(_hrRbi >= 4 ? 'Grand Slam' : _hrRbi === 3 ? '3-Run Home Run' :
                      _hrRbi === 2 ? '2-Run Home Run' : 'Solo Home Run');
@@ -3366,13 +3379,21 @@ function buildOfer(p) {
     // RBI already implied by: HR label (per paRbi), Sac Fly (1 each)
     // Use hrRbiMap paRbi for accurate HR RBI credit
     const _hrKeys2 = nameKeys(p.short || p.name || '');
-    const hrPaRbi  = (hr===1 && window._hrRbiMap)
+    const _hrArr2  = (hr > 0 && window._hrRbiMap)
       ? _hrKeys2.reduce((found, k) => found != null ? found : window._hrRbiMap[k], null)
       : null;
+    // Sum all per-HR RBI values (array) or use single value
+    const hrRbiTotal = Array.isArray(_hrArr2)
+      ? _hrArr2.reduce((s, v) => s + v, 0)
+      : (_hrArr2 != null ? _hrArr2 : null);
+    const hrPaRbi  = (hr===1 && _hrArr2 != null)
+      ? (Array.isArray(_hrArr2) ? _hrArr2[_hrArr2.length - 1] : _hrArr2)
+      : null;
     const hrRbiCredit = hr > 0
-      ? (hr > 1 ? rbi                               // "X HR" implies ALL their RBI — suppress all
-        : (hrPaRbi != null ? hrPaRbi                // exact per-PA count from hrRbiMap
-        : Math.min(rbi, Math.max(0, rbi - (s+d+t+(p.hbp||0)+sf)))))  // fallback estimate
+      ? (hr > 1
+        ? (hrRbiTotal != null ? hrRbiTotal : rbi)
+        : (hrPaRbi != null ? hrPaRbi
+        : Math.min(rbi, Math.max(0, rbi - (s+d+t+(p.hbp||0)+sf)))))
       : 0;
     const sfRbiCredit  = sf;
     const remainingRbi = Math.max(0, rbi - hrRbiCredit - sfRbiCredit);
@@ -4484,13 +4505,8 @@ function renderScorecard() {
         if (alias !== primaryKey) map.__aliases__[alias] = primaryKey;
       });
 
-      if (sym === 'HR' && !bEl && narrText) {
-        var rbiMatch = narrText.match(/(\d+)\s+rbi/i);
-        var paRbiNarr = rbiMatch ? parseInt(rbiMatch[1]) : 1;
-        if (!rbiMatch && /\brbi\b/i.test(narrText)) paRbiNarr = 1;
-        window._hrRbiMap = window._hrRbiMap || {};
-        nameKeys(bname).forEach(function(k) { window._hrRbiMap[k] = paRbiNarr; });
-      }
+      // Note: _hrRbiMap is populated by parseGame's Format B path.
+      // renderScorecard runs after parseGame so we don't re-push here.
     }
 
     xml.querySelectorAll('play').forEach(function(play) {
