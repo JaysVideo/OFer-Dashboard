@@ -877,10 +877,27 @@
   </div>
   <div class="side-menu-body">
     <div class="menu-section-label">File</div>
-    <button class="menu-btn" onclick="browseFile()">
+    <button class="menu-btn" id="fileBtn" onclick="browseFile()">
       <span class="menu-icon">📂</span> Select XML File
     </button>
     <input type="file" id="xmlFallbackInput" accept=".xml" class="menu-file-input" onchange="onFallbackFile(this)">
+    <div style="margin-top:8px;">
+      <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#888;letter-spacing:1px;margin-bottom:5px;">OR ENTER STATS URL</div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <input type="url" id="xmlUrlInput" placeholder="https://sidearmstats.com/…/1.xml"
+          style="flex:1;background:#0d0f14;border:1px solid #2e3448;color:#ccc;
+                 font-family:'Share Tech Mono',monospace;font-size:10px;
+                 padding:8px 10px;outline:none;min-width:0;"
+          onkeydown="if(event.key==='Enter')loadUrl()">
+        <button onclick="loadUrl()"
+          style="background:var(--espn-red);border:none;color:#fff;
+                 font-family:'Oswald',sans-serif;font-size:12px;font-weight:700;
+                 letter-spacing:1px;padding:8px 12px;cursor:pointer;white-space:nowrap;">
+          LOAD
+        </button>
+      </div>
+      <div id="urlStatus" style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#555;margin-top:4px;word-break:break-all;"></div>
+    </div>
     <button class="menu-btn red" id="saveOutputBtn" onclick="saveOutput()" disabled style="opacity:0.4;cursor:not-allowed;">
       <span class="menu-icon">💾</span> Save Output File
     </button>
@@ -922,7 +939,7 @@
     <div class="menu-divider"></div>
     <div class="menu-section-label">Instructions</div>
     <div class="menu-instruction-txt">
-      <div>1. SELECT XML FILE to begin</div>
+      <div>1. SELECT XML FILE or enter URL</div>
       <div>2. SAVE OUTPUT FILE to write</div>
       <div>&nbsp;&nbsp;&nbsp;Xpression Datalinq XML</div>
       <div>3. Dashboard auto-refreshes</div>
@@ -2168,6 +2185,7 @@ let gameLabel  = 'TONIGHT'; // set from XML start time
 // Falls back to <input type="file"> on unsupported browsers.
 let fileHandle      = null;
 let fallbackFile    = null;
+let urlSource       = null;   // remote URL mode
 let colorsLockedFor = null;
 let prevBatter      = '';   // previous batter for change detection
 let orderLock       = { vis: false, hom: false }; // false=scroll, true=locked in place
@@ -2224,12 +2242,37 @@ function onFallbackFile(input) {
   if (!input.files || !input.files[0]) return;
   fallbackFile    = input.files[0];
   fileHandle      = null;
+  urlSource       = null;
   colorsLockedFor = null;
   setFileName(fallbackFile.name);
-  closeMenu(); // close the side menu after selection
+  closeMenu();
   readXML();
   startAutoRefresh();
-  // Fallback path — snapshot only (used on http:// or unsupported browsers)
+}
+
+async function loadUrl() {
+  const input = document.getElementById('xmlUrlInput');
+  const raw   = (input?.value || '').trim();
+  if (!raw) return;
+
+  // Validate it looks like a URL
+  if (!raw.startsWith('http://') && !raw.startsWith('https://')) {
+    document.getElementById('urlStatus').textContent = '⚠ URL must start with http:// or https://';
+    return;
+  }
+
+  urlSource       = raw;
+  fileHandle      = null;
+  fallbackFile    = null;
+  colorsLockedFor = null;
+
+  // Show short version in status
+  const short = raw.replace(/^https?:\/\//, '').substring(0, 45) + (raw.length > 50 ? '…' : '');
+  document.getElementById('urlStatus').textContent = short;
+  setFileName(short);
+  closeMenu();
+  await readXML();
+  startAutoRefresh();
 }
 
 function setFileName(name) {
@@ -2263,18 +2306,23 @@ function updateTimer() {
     `REFRESH IN <b>${countdown}s</b>`;
 }
 
-// Read the selected XML file
+// Read the selected XML — handles FSA file handle, fallback file, or remote URL
 async function readXML() {
-  if (!fileHandle && !fallbackFile) return;
+  if (!fileHandle && !fallbackFile && !urlSource) return;
   setStat('spin', 'READING...');
   try {
     let text;
-    if (fileHandle) {
-      // FSA: check/request permission before every read
+    if (urlSource) {
+      // Remote URL — add cache-busting param so browser doesn't serve stale
+      const sep = urlSource.includes('?') ? '&' : '?';
+      const resp = await fetch(urlSource + sep + '_t=' + Date.now(), {
+        cache: 'no-store'
+      });
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      text = await resp.text();
+    } else if (fileHandle) {
       let perm = await fileHandle.queryPermission({ mode: 'read' });
-      if (perm !== 'granted') {
-        perm = await fileHandle.requestPermission({ mode: 'read' });
-      }
+      if (perm !== 'granted') perm = await fileHandle.requestPermission({ mode: 'read' });
       if (perm !== 'granted') {
         setStat('err', 'PERMISSION DENIED — CLICK ALLOW IN BROWSER PROMPT');
         return;
@@ -2286,12 +2334,13 @@ async function readXML() {
     }
     parseGame(text);
   } catch(e) {
-    if (fileHandle) {
-      // FSA handle went bad — try to silently re-request permission next cycle
+    if (urlSource) {
+      setStat('err', 'URL FETCH FAILED — ' + e.message.toUpperCase());
+      console.warn('URL fetch error:', e.message);
+    } else if (fileHandle) {
       setStat('err', 'READ ERROR — WILL RETRY...');
       console.warn('FSA read error:', e.message);
     } else {
-      // Fallback file gone stale — prompt re-select
       if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
       const fname = fallbackFile?.name || 'XML file';
       setStat('err', `FILE STALE — RE-SELECT ${fname} TO RESUME`);
@@ -2301,7 +2350,7 @@ async function readXML() {
         btn.style.color = '#d00';
         btn.innerHTML = '⚠ RE-SELECT ' + fname;
       }
-      openMenu(); // open side menu so operator can re-select easily
+      openMenu();
     }
   }
 }
