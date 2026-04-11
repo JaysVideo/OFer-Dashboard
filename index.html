@@ -1037,6 +1037,8 @@
     <div class="sit-pitches-k" id="sitPitchesK"></div>
   </div>
 </div>
+
+<div class="main" id="mainGrid">
   <div class="t-panel vis" id="visPanel">
     <div class="t-hdr">
       <div style="display:flex;align-items:center;gap:8px;">
@@ -1138,7 +1140,7 @@
     <div class="t-hdr"><span class="t-hdr-name">SCORECARD</span></div>
     <div id="scorecardWrap" style="padding:8px;min-width:700px;"></div>
   </div>
-</div>
+</div><!-- end .main -->
 
 <script>
 
@@ -3824,7 +3826,7 @@ function setTab(tab, manual=false) {
   const homPanel  = document.getElementById('homPanel');
   const pbpPanel  = document.getElementById('pbpPanel');
   const cardPanel = document.getElementById('cardPanel');
-  const main      = document.querySelector('.main');
+  const main      = document.getElementById('mainGrid') || document.querySelector('.main');
 
   // Hide all special panels first
   if (pbpPanel)  pbpPanel.style.display  = 'none';
@@ -3887,7 +3889,7 @@ function updateTabs(visName, homName, battingSide) {
 
 window.addEventListener('resize', () => {
   if (activeTab === 'both') {
-    document.querySelector('.main').style.gridTemplateColumns =
+    (document.getElementById('mainGrid') || document.querySelector('.main')).style.gridTemplateColumns =
       window.innerWidth > 768 ? '1fr 1fr' : '1fr';
   }
 });
