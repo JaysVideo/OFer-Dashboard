@@ -272,14 +272,22 @@
     font-family:'Futura Std','Barlow Condensed','Oswald',sans-serif;
   }
   .pcard.at-bat{ filter:drop-shadow(0 3px 14px rgba(0,0,0,0.9)); }
-  /* Pulsing outline when order is locked */
-  /* Pulsing outline always active on current batter */
   .pcard.at-bat {
-    animation: pulseOutline 1.8s ease-in-out infinite;
+    animation: pulseOutline 1.4s ease-in-out infinite;
   }
   @keyframes pulseOutline {
-    0%,100% { box-shadow: 0 0 0 2px rgba(var(--team-primary-rgb,245,166,35),0.7); }
-    50%      { box-shadow: 0 0 0 5px rgba(var(--team-primary-rgb,245,166,35),0.12); }
+    0%, 100% {
+      box-shadow:
+        0 0 0 2px #fff,
+        0 0 0 4px rgba(var(--team-primary-rgb,245,166,35),1),
+        0 0 18px 6px rgba(var(--team-primary-rgb,245,166,35),0.7);
+    }
+    50% {
+      box-shadow:
+        0 0 0 2px #fff,
+        0 0 0 6px rgba(var(--team-primary-rgb,245,166,35),0.6),
+        0 0 32px 12px rgba(var(--team-primary-rgb,245,166,35),0.2);
+    }
   }
   .t-panel.vis .pcard.at-bat { --team-primary-rgb: var(--vis-primary-rgb, 245,166,35); }
   .t-panel.hom .pcard.at-bat { --team-primary-rgb: var(--hom-primary-rgb, 245,166,35); }
