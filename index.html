@@ -456,6 +456,11 @@
     letter-spacing:0px;
   }
   .ofer-val.emp{color:#888;font-size:14px;font-weight:400;font-style:italic;}
+  /* Sac bunt 0-AB flag — yellow highlight prompting manual entry */
+  .ofer-val.sac{color:#111;font-size:13px;font-weight:700;font-style:italic;}
+  .pcard:has(.ofer-val.sac) .graphic-body,
+  .pcard:has(.ofer-val.sac) .content-area { background:#f5c842 !important; }
+  .pcard:has(.ofer-val.sac) { border-left:3px solid #f5c842; }
   /* 0-0 walk — ESPN guide: never show 0-0. Highlight wraps the whole stat line */
   .ofer-val.walk-highlight{
     background:#f5a623;color:#000 !important;padding:2px 8px;
@@ -2744,6 +2749,7 @@ function parsePlayers(teamEl) {
     const bb   = n(hit?.getAttribute('bb'));
     const hbp  = n(hit?.getAttribute('hbp'));
     const sf   = n(hit?.getAttribute('sf'));
+    const sh   = n(hit?.getAttribute('sh'));
     const short= (p.getAttribute('shortname') || '').toLowerCase().trim();
     const name = p.getAttribute('name') || '';
 
@@ -2773,7 +2779,7 @@ function parsePlayers(teamEl) {
       r   : n(hit?.getAttribute('r')),
       rbi : n(hit?.getAttribute('rbi')),
       so  : n(hit?.getAttribute('so')),
-      bb, hbp, sf,
+      bb, hbp, sf, sh,
       s   : Math.max(0, h - d - t - hr),
       d, t, hr,
       hasHitTypes,
@@ -3227,6 +3233,9 @@ function renderRoster(elId, side, players, curBtr, isThisBatting, animate=false,
     let oferHTML = '';
     if (ofer.cls === 'emp') {
       oferHTML = '<span class="ofer-val emp">—</span>';
+    } else if (ofer.cls === 'sac') {
+      // Sac bunt 0-AB: yellow flag — show ✏ MANUAL ENTRY prompt
+      oferHTML = '<span class="ofer-val sac">✏ MANUAL ENTRY</span>';
     } else {
       const parenIdx  = ofer.text.indexOf('(');
       const scorePart = parenIdx > -1 ? ofer.text.substring(0, parenIdx).trim() : ofer.text;
@@ -3287,7 +3296,21 @@ function renderRoster(elId, side, players, curBtr, isThisBatting, animate=false,
 
     const cardId = 'card_' + side + '_' + p.uni;
     const manualKey = 'manual_' + side + '_' + p.uni;
-    const manualVal = window._manualOverrides?.[manualKey] || '';
+
+    // Auto-clear sac placeholder the moment they get a real AB
+    // (ofer.cls will no longer be 'sac', so we know they've graduated past it)
+    const savedOverride = window._manualOverrides?.[manualKey] || '';
+    const isSacPlaceholder = savedOverride === '1 SACRIFICE' ||
+      /^\d+ SACRIFICE/.test(savedOverride);
+    if (ofer.cls !== 'sac' && isSacPlaceholder) {
+      // AB arrived — drop the placeholder so the real stat shows
+      if (window._manualOverrides) delete window._manualOverrides[manualKey];
+    }
+
+    // Pre-populate sac bunt cards with the sacrifice count so operator can edit/copy
+    const sacPlaceholder = (ofer.cls === 'sac' && !savedOverride)
+      ? ofer.text : '';
+    const manualVal = (window._manualOverrides?.[manualKey]) || sacPlaceholder;
     const copyVal   = manualVal || safe;
     const manualActive = manualVal ? ' active' : '';
 
@@ -3387,19 +3410,26 @@ function sb(lbl, val) {
 // ESPN OFer ENGINE — strict guide compliance
 // ════════════════════════════════════════════════════════════════════════════
 function buildOfer(p) {
-  const { ab, h, rbi, r, so, bb, s, d, t, hr, gidp, sb, sf, roe, fc } = p;
+  const { ab, h, rbi, r, so, bb, s, d, t, hr, gidp, sb, sf, sh, roe, fc } = p;
   const hbp = p.hbp || 0;
+
+  // ── Sac bunt with 0 AB — flag for manual entry ────────────────────────────
+  // Nothing to show per ESPN guide, but operator needs to know. Return special
+  // cls:'sac' so the card highlights yellow and pre-fills manual override with count.
+  // As soon as they have a real AB this block is skipped entirely.
+  if (ab === 0 && h === 0 && (sh || 0) > 0 && sf === 0 && bb === 0 && hbp === 0) {
+    const sacText = sh === 1 ? '1 SACRIFICE' : sh + ' SACRIFICES';
+    return { text: sacText, cls: 'sac' };
+  }
 
   // ── RULE 3: ab=0 — never show 0-0 ────────────────────────────────────────
   // Combine SF (Rule 8), Walk (Rule 3), HBP, and RBI in priority order
   if (ab === 0 && h === 0) {
     const parts0 = [];
-    if (sf  > 0)  parts0.push(sf===1  ? 'Sac Fly'  : `${sf} Sac Flies`);
-    if (bb  > 0)  parts0.push(bb===1  ? 'Walk'      : `${bb} Walks`);
-    if (hbp > 0)  parts0.push(hbp===1 ? 'HBP'       : `${hbp} HBP`);
-    // Always show RBI if present — StatBroadcast sometimes records sac fly or
-    // walk RBI as ab=0/sf=0, so RBI is the only way to surface the contribution
-    if (rbi > 0)  parts0.push(rbi===1  ? 'RBI'      : `${rbi} RBI`);
+    if (sf  > 0)  parts0.push(sf===1  ? 'Sac Fly'   : `${sf} Sac Flies`);
+    if (bb  > 0)  parts0.push(bb===1  ? 'Walk'       : `${bb} Walks`);
+    if (hbp > 0)  parts0.push(hbp===1 ? 'HBP'        : `${hbp} HBP`);
+    if (rbi > 0)  parts0.push(rbi===1 ? 'RBI'        : `${rbi} RBI`);
     if (parts0.length > 0) return { text: parts0.join(', '), cls:'neu' };
     return { text:'—', cls:'emp' };
   }
